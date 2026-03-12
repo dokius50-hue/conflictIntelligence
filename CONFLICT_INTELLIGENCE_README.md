@@ -901,7 +901,7 @@ FROM (
     jsonb_array_elements_text(q.ai_suggested_tags->'options_executed') AS suggested_option,
     e.options_executed
   FROM events_queue q
-  JOIN events e ON e.metadata->>'queue_id' = q.id::text
+  JOIN events e ON e.queue_id = q.id
   WHERE q.status = 'approved'
 ) sub
 GROUP BY suggested_option

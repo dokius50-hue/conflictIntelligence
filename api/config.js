@@ -17,12 +17,21 @@ module.exports = async (req, res) => {
     ]);
     const err = actors.error || theatres.error || options.error || thresholds.error || scenarios.error;
     if (err) throw err;
+    const thresholdIds = (thresholds.data || []).map((t) => t.id);
+    const thresholdConditions = thresholdIds.length
+      ? await supabase
+          .from('config_threshold_conditions')
+          .select('*')
+          .in('threshold_id', thresholdIds)
+          .order('display_order')
+      : { data: [] };
     return res.status(200).json({
       actors: actors.data || [],
       theatres: theatres.data || [],
       options: options.data || [],
       thresholds: thresholds.data || [],
       scenarios: scenarios.data || [],
+      threshold_conditions: thresholdConditions.data || [],
     });
   } catch (e) {
     return res.status(500).json({ error: e.message });

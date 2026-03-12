@@ -4,6 +4,7 @@
 require('dotenv').config();
 const http = require('http');
 const url = require('url');
+const { requireAdminAuth } = require('./api/lib/adminAuth');
 
 const queuePending = require('./api/queue-pending');
 const queueApprove = require('./api/queue-approve');
@@ -21,6 +22,8 @@ const routes = {
   '/api/config': config,
 };
 
+const ADMIN_ROUTES = new Set(['/api/queue-pending', '/api/queue-approve', '/api/queue-reject', '/api/validate-config']);
+
 const PORT = process.env.API_PORT || 3001;
 
 const server = http.createServer(async (req, res) => {
@@ -34,6 +37,7 @@ const server = http.createServer(async (req, res) => {
   let body = '';
   req.on('data', (chunk) => (body += chunk));
   req.on('end', async () => {
+    if (ADMIN_ROUTES.has(pathname) && !requireAdminAuth(req, res)) return;
     const query = url.parse(req.url, true).query;
     const reqProxy = {
       method: req.method,

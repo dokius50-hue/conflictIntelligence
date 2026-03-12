@@ -2,13 +2,88 @@ import { useState, useEffect } from 'react';
 
 const API = '/api';
 
+function adminAuthHeaders() {
+  const key = import.meta.env.VITE_ADMIN_API_KEY;
+  if (!key) return {};
+  return { Authorization: `Bearer ${key}` };
+}
+
+function rawDisplay(raw) {
+  if (raw == null) return '(none)';
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return raw;
+    }
+  }
+  return JSON.stringify(raw, null, 2);
+}
+
+function AITags({ tags }) {
+  if (!tags || typeof tags !== 'object') return null;
+  const { options_executed, options_degraded, options_foreclosed, options_unlocked, thresholds_advanced, reasoning } = tags;
+  const hasAny = [options_executed, options_degraded, options_foreclosed, options_unlocked, thresholds_advanced].some(
+    (a) => Array.isArray(a) && a.length > 0
+  );
+  if (!hasAny && !reasoning) return null;
+  return (
+    <div className="mt-2 rounded border border-amber-200 bg-amber-50/80 p-2 text-xs">
+      {reasoning && <p className="italic text-slate-600">AI: {reasoning}</p>}
+      {hasAny && (
+        <div className="mt-1 flex flex-wrap gap-1">
+          {Array.isArray(options_executed) &&
+            options_executed.length > 0 &&
+            options_executed.map((id) => (
+              <span key={id} className="rounded bg-green-200 px-1.5 py-0.5 text-slate-800" title="executed">
+                +{id}
+              </span>
+            ))}
+          {Array.isArray(options_degraded) &&
+            options_degraded.length > 0 &&
+            options_degraded.map((id) => (
+              <span key={id} className="rounded bg-yellow-200 px-1.5 py-0.5 text-slate-800" title="degraded">
+                ~{id}
+              </span>
+            ))}
+          {Array.isArray(options_foreclosed) &&
+            options_foreclosed.length > 0 &&
+            options_foreclosed.map((id) => (
+              <span key={id} className="rounded bg-red-200 px-1.5 py-0.5 text-slate-800" title="foreclosed">
+                ×{id}
+              </span>
+            ))}
+          {Array.isArray(options_unlocked) &&
+            options_unlocked.length > 0 &&
+            options_unlocked.map((id) => (
+              <span key={id} className="rounded bg-blue-200 px-1.5 py-0.5 text-slate-800" title="unlocked">
+                ↑{id}
+              </span>
+            ))}
+          {Array.isArray(thresholds_advanced) &&
+            thresholds_advanced.length > 0 &&
+            thresholds_advanced.map((id) => (
+              <span key={id} className="rounded bg-purple-200 px-1.5 py-0.5 text-slate-800" title="threshold">
+                ⟳{id}
+              </span>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminQueue() {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [openRawId, setOpenRawId] = useState(null);
+  const [editRow, setEditRow] = useState(null);
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
-    fetch(`${API}/queue-pending`)
+    fetch(`${API}/queue-pending`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => {
         setPending(Array.isArray(data) ? data : []);
@@ -18,16 +93,27 @@ export default function AdminQueue() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!editRow) return;
+    fetch(`${API}/config`)
+      .then((r) => r.json())
+      .then((data) => setConfig(data))
+      .catch(() => setConfig({ options: [], threshold_conditions: [] }));
+  }, [editRow]);
+
   const approve = (queueId, edits = {}) => {
     fetch(`${API}/queue-approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...adminAuthHeaders() },
       body: JSON.stringify({ queue_id: queueId, ...edits }),
     })
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setPending((prev) => prev.filter((r) => r.id !== queueId));
+        else {
+          setPending((prev) => prev.filter((r) => r.id !== queueId));
+          setEditRow(null);
+        }
       })
       .catch((e) => setError(e.message));
   };
@@ -35,13 +121,16 @@ export default function AdminQueue() {
   const reject = (queueId, notes) => {
     fetch(`${API}/queue-reject`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...adminAuthHeaders() },
       body: JSON.stringify({ queue_id: queueId, reviewer_notes: notes }),
     })
       .then((r) => r.json())
       .then((data) => {
         if (data.error) setError(data.error);
-        else setPending((prev) => prev.filter((r) => r.id !== queueId));
+        else {
+          setPending((prev) => prev.filter((r) => r.id !== queueId));
+          setEditRow(null);
+        }
       })
       .catch((e) => setError(e.message));
   };
@@ -64,8 +153,18 @@ export default function AdminQueue() {
                 <a href={row.source_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-600 hover:underline">
                   Source
                 </a>
-                {row.ai_suggested_tags?.reasoning && (
-                  <p className="mt-2 text-xs italic text-slate-500">AI: {row.ai_suggested_tags.reasoning}</p>
+                <AITags tags={row.ai_suggested_tags} />
+                <button
+                  type="button"
+                  onClick={() => setOpenRawId(openRawId === row.id ? null : row.id)}
+                  className="mt-2 text-xs text-slate-500 hover:underline"
+                >
+                  {openRawId === row.id ? 'Hide raw input' : 'Show raw input'}
+                </button>
+                {openRawId === row.id && (
+                  <pre className="mt-2 max-h-48 overflow-auto rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-700 whitespace-pre-wrap">
+                    {rawDisplay(row.raw_input)}
+                  </pre>
                 )}
               </div>
               <div className="flex shrink-0 gap-2">
@@ -75,6 +174,13 @@ export default function AdminQueue() {
                   className="rounded bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
                 >
                   Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditRow(row)}
+                  className="rounded bg-sky-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-700"
+                >
+                  Edit & Approve
                 </button>
                 <button
                   type="button"
@@ -89,6 +195,176 @@ export default function AdminQueue() {
         ))}
       </ul>
       {pending.length === 0 && <p className="mt-4 text-slate-500">No pending items.</p>}
+
+      {editRow && (
+        <EditApproveModal
+          row={editRow}
+          config={config}
+          onClose={() => setEditRow(null)}
+          onApprove={(edits) => approve(editRow.id, edits)}
+          onReject={(notes) => reject(editRow.id, notes)}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditApproveModal({ row, config, onClose, onApprove, onReject }) {
+  const [title, setTitle] = useState(row.title ?? '');
+  const [description, setDescription] = useState(row.description ?? '');
+  const [sourceUrl, setSourceUrl] = useState(row.source_url ?? '');
+  const [optionsExecuted, setOptionsExecuted] = useState(row.options_executed ?? row.ai_suggested_tags?.options_executed ?? []);
+  const [optionsDegraded, setOptionsDegraded] = useState(row.options_degraded ?? row.ai_suggested_tags?.options_degraded ?? []);
+  const [optionsForeclosed, setOptionsForeclosed] = useState(row.options_foreclosed ?? row.ai_suggested_tags?.options_foreclosed ?? []);
+  const [optionsUnlocked, setOptionsUnlocked] = useState(row.options_unlocked ?? row.ai_suggested_tags?.options_unlocked ?? []);
+  const [thresholdsAdvanced, setThresholdsAdvanced] = useState(row.thresholds_advanced ?? row.ai_suggested_tags?.thresholds_advanced ?? []);
+
+  const options = config?.options ?? [];
+  const conditions = config?.threshold_conditions ?? [];
+
+  const toggleArray = (arr, setter, id) => {
+    setter((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const submit = () => {
+    onApprove({
+      title: title || row.title,
+      description: description || row.description,
+      source_url: sourceUrl || row.source_url,
+      options_executed: optionsExecuted,
+      options_degraded: optionsDegraded,
+      options_foreclosed: optionsForeclosed,
+      options_unlocked: optionsUnlocked,
+      thresholds_advanced: thresholdsAdvanced,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-slate-800">Edit & Approve</h3>
+        <div className="mt-4 space-y-3">
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500">Title</span>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500">Description</span>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500">Source URL</span>
+            <input
+              type="url"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              className="mt-0.5 w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          {options.length > 0 && (
+            <>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500">Options executed (valid IDs only)</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleArray(optionsExecuted, setOptionsExecuted, opt.id)}
+                      className={`rounded px-2 py-0.5 text-xs ${optionsExecuted.includes(opt.id) ? 'bg-green-200' : 'bg-slate-100'}`}
+                    >
+                      {opt.label || opt.id}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500">Options degraded</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleArray(optionsDegraded, setOptionsDegraded, opt.id)}
+                      className={`rounded px-2 py-0.5 text-xs ${optionsDegraded.includes(opt.id) ? 'bg-yellow-200' : 'bg-slate-100'}`}
+                    >
+                      {opt.label || opt.id}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500">Options foreclosed</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleArray(optionsForeclosed, setOptionsForeclosed, opt.id)}
+                      className={`rounded px-2 py-0.5 text-xs ${optionsForeclosed.includes(opt.id) ? 'bg-red-200' : 'bg-slate-100'}`}
+                    >
+                      {opt.label || opt.id}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500">Options unlocked</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleArray(optionsUnlocked, setOptionsUnlocked, opt.id)}
+                      className={`rounded px-2 py-0.5 text-xs ${optionsUnlocked.includes(opt.id) ? 'bg-blue-200' : 'bg-slate-100'}`}
+                    >
+                      {opt.label || opt.id}
+                    </button>
+                  ))}
+                </div>
+              </label>
+            </>
+          )}
+          {conditions.length > 0 && (
+            <label className="block">
+              <span className="text-xs font-medium text-slate-500">Thresholds advanced (conditions)</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {conditions.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleArray(thresholdsAdvanced, setThresholdsAdvanced, c.id)}
+                    className={`rounded px-2 py-0.5 text-xs ${thresholdsAdvanced.includes(c.id) ? 'bg-purple-200' : 'bg-slate-100'}`}
+                  >
+                    {c.description?.slice(0, 40) || c.id}
+                  </button>
+                ))}
+              </div>
+            </label>
+          )}
+        </div>
+        <div className="mt-6 flex gap-2">
+          <button type="button" onClick={submit} className="rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
+            Approve with edits
+          </button>
+          <button type="button" onClick={onClose} className="rounded bg-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-300">
+            Cancel
+          </button>
+          <button type="button" onClick={() => onReject()} className="rounded bg-red-100 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-200">
+            Reject
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
