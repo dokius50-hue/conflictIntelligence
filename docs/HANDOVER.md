@@ -6,9 +6,17 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 
 ## Where we are
 
-- **Stages 1–5:** Done. Schema (Supabase migrations applied), seed (hormuz_2026, actors, theatres, sources), ingestion (Perplexity via Sonar API, Twitter stub), `lib/db`, `lib/reasoning`, agents READMEs.
-- **Stage 6 (partial):** Event queue works (list, approve, reject). **Still to do:** event card enhancements (raw toggle, AI tags, Edit & Approve), Twitter RapidAPI implementation, tweet queue API + UI, config editor (actors/theatres first).
-- **Stage 7 (partial):** Layout, Home, Event Timeline, Admin Queue. **Still to do:** Situation Map, map–timeline interaction, Option / Threshold / Scenario views, Perspectives panel, Market panel.
+- **Stages 1–5:** Done. Schema (Supabase migrations applied), seed (hormuz_2026, actors, theatres, sources), ingestion (Perplexity via Sonar API, Twitter via RapidAPI), `lib/db`, `lib/reasoning`, agents READMEs.
+- **Stage 6:** Done. Event queue (list, approve, reject + Edit & Approve modal with AI tags), tweet queue (API + TweetQueue UI), config editor (actors/theatres with validate_config_references warnings), Twitter RapidAPI client (two-step rest_id flow), admin auth (ADMIN_API_KEY Bearer token).
+- **Stage 7:** Done. All seven analytical views built and browser-tested:
+  - B1: Situation Map (Leaflet, OSM tiles, theatre rectangles, location markers)
+  - B2: Map–Timeline interaction (click theatre/location → filter timeline; click event → highlight on map)
+  - B3: Option Elimination View (residual option space per actor, intensity dots, executed/locked/available sections)
+  - B4: Threshold Proximity Tracker (condition checklist, proximity bar, cascade consequences)
+  - B5: Scenario Falsification Tracker (viable/falsified split, survival conditions)
+  - B6: Analyst Perspectives Panel (theatre filter, osint/analyst badges, tweet cards)
+  - B7: Market Panel (Recharts line charts, 4 indicators with time-series)
+- **Supabase data seeded for all views:** config_locations (7), config_options (13), config_thresholds (3), config_threshold_conditions (10), config_scenarios (4), config_scenario_conditions (12), perspectives (5), market_indicators (4), market_snapshots (4), market_snapshot_values (16), events (10 published).
 
 **Plans to follow:**
 
@@ -52,12 +60,16 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 
 ---
 
-## Next steps (implementation order from plan)
+## Next steps
 
-1. **A1** — Event card: raw input toggle, AI tags display, Edit & Approve (form/modal with valid option/condition IDs).
-2. **A2** — Twitter: implement `fetchViaRapidAPI` in `scripts/lib/twitter-client.js` per twitter241 plan; then tweet queue API (`GET /api/tweets-pending`, `POST /api/tweet-disposition`) + admin Tweet queue page.
-3. **A3** — Config editor: API for actors/theatres (list, PATCH/POST), call `validate_config_references` on save; admin Config page (actors, theatres).
-4. **B1–B7** — Situation Map (Leaflet, OSM/Mapbox), map–timeline interaction, Option/Threshold/Scenario views (APIs + pages), Perspectives panel, Market panel.
+All build sequence stages are complete. The framework is fully functional with real data. Remaining work is polish, expansion, and production readiness:
+
+1. **Real ingestion run** — Run `npm run ingest:perplexity` and `npm run ingest:twitter` to refill the queue with live data; process through the admin queue to populate published events.
+2. **Config expansion** — Add more `config_options`, `config_thresholds`, `config_scenarios` as events evolve using the Config Editor.
+3. **Production deploy** — Set up Vercel deployment; ensure Supabase RLS policies are correct for anon/service roles; set env vars on Vercel.
+4. **Vercel API routes** — The `api/*.js` files follow Vercel serverless format; `server.js` is dev-only. Verify Vercel `vercel.json` rewrites are correct.
+5. **Option/threshold marking** — Wire admin queue approval to update option statuses (executed/degraded/foreclosed) and threshold condition statuses via the Edit & Approve modal.
+6. **Causal chain view** — Click an event → see which options were executed/foreclosed and which threshold conditions advanced (lib/reasoning/causal-chain.js scaffolded).
 
 ---
 
