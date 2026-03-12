@@ -43,14 +43,12 @@ async function fetchViaRapidAPI(handle, sinceId) {
     return [];
   }
 
-  const query = new URLSearchParams({ username: handle });
-  // Best-effort sinceId support if API exposes it; safe to ignore if not used.
-  if (sinceId) query.set('since_id', sinceId);
-
-  const options = {
+  // Step 1: resolve username -> user(rest_id) via /user
+  const userQuery = new URLSearchParams({ username: handle });
+  const userOptions = {
     method: 'GET',
     hostname: host,
-    path: `/user/tweets?${query.toString()}`,
+    path: `/user?${userQuery.toString()}`,
     headers: {
       'X-RapidAPI-Key': key,
       'X-RapidAPI-Host': host,
@@ -58,24 +56,71 @@ async function fetchViaRapidAPI(handle, sinceId) {
   };
 
   try {
-    const data = await httpGetJson(options);
-    const tweets = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
-    return tweets.map((t) => {
-      const id = t.id_str || t.id || t.tweet_id;
-      const text = t.full_text || t.text || '';
-      const created = t.created_at || t.timestamp || t.posted_at;
-      const user = t.user || t.author || {};
-      const screenName = user.screen_name || user.username || handle;
-      const name = user.name || user.display_name || null;
-      return {
+    const userData = await httpGetJson(userOptions);
+    // Inspect once while stabilising mapping.
+    try {
+      console.log('twitter241 /user raw (truncated):', JSON.stringify(userData).slice(0, 400));
+    } catch {}
+    const userRestId =
+      userData?.result?.data?.user?.result?.rest_id ||
+      userData?.data?.user?.result?.rest_id ||
+      userData?.result?.rest_id ||
+      userData?.rest_id ||
+      userData?.id ||
+      null;
+    if (!userRestId) {
+      console.warn('twitter241: could not resolve user rest_id for handle', handle);
+      return [];
+    }
+
+    // Step 2: fetch tweets via /user-tweets?user=<rest_id>&count=20
+    const tweetsQuery = new URLSearchParams({ user: String(userRestId), count: '20' });
+    const tweetsOptions = {
+      method: 'GET',
+      hostname: host,
+      path: `/user-tweets?${tweetsQuery.toString()}`,
+      headers: {
+        'X-RapidAPI-Key': key,
+        'X-RapidAPI-Host': host,
+      },
+    };
+
+    const data = await httpGetJson(tweetsOptions);
+    const instructions = data?.result?.timeline?.instructions || [];
+    const out = [];
+    const pushFromEntry = (entry) => {
+      const ic = entry?.content?.itemContent;
+      if (!ic || ic.__typename !== 'TimelineTweet') return;
+      const tr = ic.tweet_results?.result;
+      if (!tr || tr.__typename !== 'Tweet') return;
+      const id = tr.rest_id || tr.legacy?.id_str || tr.legacy?.id;
+      const text =
+        tr.note_tweet?.note_tweet_results?.result?.text ||
+        tr.legacy?.full_text ||
+        tr.legacy?.text ||
+        '';
+      const created = tr.legacy?.created_at;
+      const user = tr.core?.user_results?.result;
+      const screenName = user?.legacy?.screen_name || user?.core?.screen_name || handle;
+      const name = user?.legacy?.name || user?.core?.name || null;
+      if (!id || !text) return;
+      out.push({
         tweet_id: id,
         text,
         url: `https://twitter.com/i/status/${id}`,
         posted_at: created ? new Date(created).toISOString() : new Date().toISOString(),
         author_handle: screenName,
         author_name: name,
-      };
-    });
+      });
+    };
+    for (const instr of instructions) {
+      if (Array.isArray(instr.entries)) {
+        for (const e of instr.entries) pushFromEntry(e);
+      } else if (instr.entry) {
+        pushFromEntry(instr.entry);
+      }
+    }
+    return out;
   } catch (e) {
     console.error('Twitter RapidAPI fetch error for handle', handle, e.message);
     return [];

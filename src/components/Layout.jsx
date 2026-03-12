@@ -18,6 +18,9 @@ export default function Layout({ children }) {
             <Link to="/admin/tweets" className="text-sm text-slate-600 hover:text-slate-900">
               Tweet Queue
             </Link>
+            <Link to="/admin/config" className="text-sm text-slate-600 hover:text-slate-900">
+              Config
+            </Link>
           </nav>
         </div>
       </header>

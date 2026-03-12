@@ -10,6 +10,8 @@ const queuePending = require('./api/queue-pending');
 const queueApprove = require('./api/queue-approve');
 const queueReject = require('./api/queue-reject');
 const validateConfig = require('./api/validate-config');
+const configActors = require('./api/config-actors');
+const configTheatres = require('./api/config-theatres');
 const tweetsPending = require('./api/tweets-pending');
 const tweetDisposition = require('./api/tweet-disposition');
 const events = require('./api/events');
@@ -20,6 +22,8 @@ const routes = {
   '/api/queue-approve': queueApprove,
   '/api/queue-reject': queueReject,
   '/api/validate-config': validateConfig,
+  '/api/config-actors': configActors,
+  '/api/config-theatres': configTheatres,
   '/api/tweets-pending': tweetsPending,
   '/api/tweet-disposition': tweetDisposition,
   '/api/events': events,
@@ -31,6 +35,8 @@ const ADMIN_ROUTES = new Set([
   '/api/queue-approve',
   '/api/queue-reject',
   '/api/validate-config',
+  '/api/config-actors',
+  '/api/config-theatres',
   '/api/tweets-pending',
   '/api/tweet-disposition',
 ]);
