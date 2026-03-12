@@ -6,6 +6,7 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
+// Vite doesn't copy leaflet's marker images automatically — import them explicitly
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -133,19 +134,18 @@ export default function SituationMap({
           })}
           {locations.map((loc) => {
             const isActive = activeLocation === loc.id;
-            const icon = isActive
-              ? L.divIcon({
-                  className: '',
-                  html: `<div style="width:18px;height:18px;border-radius:50%;background:#e53935;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.4)"></div>`,
-                  iconSize: [18, 18],
-                  iconAnchor: [9, 9],
-                })
-              : undefined;
+            const activeIcon = L.divIcon({
+              className: '',
+              html: `<div style="width:18px;height:18px;border-radius:50%;background:#e53935;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.4)"></div>`,
+              iconSize: [18, 18],
+              iconAnchor: [9, 9],
+            });
+            const markerProps = isActive ? { icon: activeIcon } : {};
             return (
               <Marker
                 key={loc.id}
                 position={[loc.lat, loc.lng]}
-                icon={icon || undefined}
+                {...markerProps}
                 eventHandlers={{
                   click: () => onLocationClick?.(loc.id),
                 }}
