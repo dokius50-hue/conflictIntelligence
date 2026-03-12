@@ -10,6 +10,7 @@ export default function Home() {
       <ul className="mt-4 flex flex-wrap gap-4">
         <li><Link to="/timeline" className="text-blue-600 hover:underline">Event Timeline</Link></li>
         <li><Link to="/admin/queue" className="text-blue-600 hover:underline">Admin Queue</Link></li>
+        <li><Link to="/admin/tweets" className="text-blue-600 hover:underline">Tweet Queue</Link></li>
       </ul>
     </div>
   );

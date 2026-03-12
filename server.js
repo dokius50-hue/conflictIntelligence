@@ -10,6 +10,8 @@ const queuePending = require('./api/queue-pending');
 const queueApprove = require('./api/queue-approve');
 const queueReject = require('./api/queue-reject');
 const validateConfig = require('./api/validate-config');
+const tweetsPending = require('./api/tweets-pending');
+const tweetDisposition = require('./api/tweet-disposition');
 const events = require('./api/events');
 const config = require('./api/config');
 
@@ -18,11 +20,20 @@ const routes = {
   '/api/queue-approve': queueApprove,
   '/api/queue-reject': queueReject,
   '/api/validate-config': validateConfig,
+  '/api/tweets-pending': tweetsPending,
+  '/api/tweet-disposition': tweetDisposition,
   '/api/events': events,
   '/api/config': config,
 };
 
-const ADMIN_ROUTES = new Set(['/api/queue-pending', '/api/queue-approve', '/api/queue-reject', '/api/validate-config']);
+const ADMIN_ROUTES = new Set([
+  '/api/queue-pending',
+  '/api/queue-approve',
+  '/api/queue-reject',
+  '/api/validate-config',
+  '/api/tweets-pending',
+  '/api/tweet-disposition',
+]);
 
 const PORT = process.env.API_PORT || 3001;
 
