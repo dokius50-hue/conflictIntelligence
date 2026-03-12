@@ -1,0 +1,14 @@
+---
+description: Commit and push changes to GitHub after making edits
+alwaysApply: true
+---
+
+# Git: Commit and Push After Changes
+
+After completing edits or tasks that change files in this project:
+
+1. **Stage all changes**: `git add -A`
+2. **Commit** with a short, clear message describing what changed: `git commit -m "…"`
+3. **Push** to the remote: `git push`
+
+Run these from the project root (`conflictIntelligence`). Do not commit `.env` or other secrets (they should already be in `.gitignore`). If there is nothing to commit (working tree clean), skip or just report that everything is already up to date.
