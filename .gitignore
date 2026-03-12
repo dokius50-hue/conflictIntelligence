@@ -1,0 +1,16 @@
+# Environment (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+
+# macOS
+.DS_Store
+
+# Build / cache
+dist/
+.vite/
+*.log
+logs/
