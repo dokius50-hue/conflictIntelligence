@@ -5,6 +5,7 @@ import EventTimeline from './pages/EventTimeline';
 import AdminQueue from './admin/AdminQueue';
 import TweetQueue from './admin/TweetQueue';
 import ConfigEditor from './admin/ConfigEditor';
+import SituationMap from './pages/SituationMap';
 
 export default function App() {
   return (
@@ -12,6 +13,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/timeline" element={<EventTimeline />} />
+        <Route path="/map" element={<SituationMap />} />
         <Route path="/admin/queue" element={<AdminQueue />} />
         <Route path="/admin/tweets" element={<TweetQueue />} />
         <Route path="/admin/config" element={<ConfigEditor />} />

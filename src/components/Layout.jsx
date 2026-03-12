@@ -12,6 +12,9 @@ export default function Layout({ children }) {
             <Link to="/timeline" className="text-sm text-slate-600 hover:text-slate-900">
               Timeline
             </Link>
+          <Link to="/map" className="text-sm text-slate-600 hover:text-slate-900">
+            Map
+          </Link>
             <Link to="/admin/queue" className="text-sm text-slate-600 hover:text-slate-900">
               Admin Queue
             </Link>
