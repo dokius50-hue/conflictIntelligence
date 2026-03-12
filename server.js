@@ -16,6 +16,11 @@ const tweetsPending = require('./api/tweets-pending');
 const tweetDisposition = require('./api/tweet-disposition');
 const events = require('./api/events');
 const config = require('./api/config');
+const options = require('./api/options');
+const thresholds = require('./api/thresholds');
+const scenarios = require('./api/scenarios');
+const perspectives = require('./api/perspectives');
+const market = require('./api/market');
 
 const routes = {
   '/api/queue-pending': queuePending,
@@ -28,6 +33,11 @@ const routes = {
   '/api/tweet-disposition': tweetDisposition,
   '/api/events': events,
   '/api/config': config,
+  '/api/options': options,
+  '/api/thresholds': thresholds,
+  '/api/scenarios': scenarios,
+  '/api/perspectives': perspectives,
+  '/api/market': market,
 };
 
 const ADMIN_ROUTES = new Set([
