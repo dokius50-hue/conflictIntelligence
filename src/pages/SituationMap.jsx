@@ -17,7 +17,21 @@ const API = '/api';
 const DEFAULT_CENTER = [26, 56]; // Gulf region
 const DEFAULT_ZOOM = 5;
 
-export default function SituationMap() {
+/**
+ * @param {object} props
+ * @param {function} [props.onTheatreClick]  - (theatreId: string) => void
+ * @param {function} [props.onLocationClick] - (locationId: string) => void
+ * @param {string|null} [props.activeTheatre]  - theatre ID to highlight
+ * @param {string|null} [props.activeLocation] - location ID to highlight
+ * @param {boolean} [props.standalone] - if true, show page heading
+ */
+export default function SituationMap({
+  onTheatreClick,
+  onLocationClick,
+  activeTheatre = null,
+  activeLocation = null,
+  standalone = true,
+}) {
   const [config, setConfig] = useState(null);
   const [error, setError] = useState(null);
 
@@ -53,7 +67,6 @@ export default function SituationMap() {
     })
     .filter(Boolean);
 
-  // If any theatre has bounds, use the first as initial view; otherwise default Gulf view.
   const initialCenter = boundsFromTheatres.length
     ? [
         (boundsFromTheatres[0][0][0] + boundsFromTheatres[0][1][0]) / 2,
@@ -63,10 +76,14 @@ export default function SituationMap() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-2xl font-semibold text-slate-800">Situation Map</h1>
-      <p className="text-slate-600">
-        Theatres are shown as rectangles when bounds are configured; locations appear as markers.
-      </p>
+      {standalone && (
+        <>
+          <h1 className="text-2xl font-semibold text-slate-800">Situation Map</h1>
+          <p className="text-slate-600">
+            Click a theatre or location to filter the event timeline below.
+          </p>
+        </>
+      )}
       <div className="mt-2 h-[500px] w-full overflow-hidden rounded border border-slate-200">
         <MapContainer center={initialCenter} zoom={DEFAULT_ZOOM} style={{ height: '100%', width: '100%' }}>
           <TileLayer
@@ -85,31 +102,73 @@ export default function SituationMap() {
               [t.bounds_south, t.bounds_west],
               [t.bounds_north, t.bounds_east],
             ];
+            const isActive = activeTheatre === t.id;
             return (
               <Rectangle
                 key={t.id}
                 bounds={rectBounds}
-                pathOptions={{ color: t.color || '#0d47a1', weight: 2, fillOpacity: 0.1 }}
+                pathOptions={{
+                  color: isActive ? '#e53935' : (t.color || '#0d47a1'),
+                  weight: isActive ? 3 : 2,
+                  fillOpacity: isActive ? 0.22 : 0.1,
+                }}
+                eventHandlers={{
+                  click: () => onTheatreClick?.(t.id),
+                }}
               >
                 <Popup>
                   <strong>{t.label}</strong>
+                  {onTheatreClick && (
+                    <button
+                      className="ml-2 text-xs text-blue-600 underline"
+                      onClick={() => onTheatreClick(t.id)}
+                    >
+                      Filter events
+                    </button>
+                  )}
                 </Popup>
               </Rectangle>
             );
           })}
-          {locations.map((loc) => (
-            <Marker key={loc.id} position={[loc.lat, loc.lng]}>
-              <Popup>
-                <div>
-                  <strong>{loc.name}</strong>
-                  {loc.type && <div className="text-xs text-slate-600">Type: {loc.type}</div>}
-                  {loc.theatre_id && (
-                    <div className="text-xs text-slate-600">Theatre: {loc.theatre_id}</div>
-                  )}
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          {locations.map((loc) => {
+            const isActive = activeLocation === loc.id;
+            const icon = isActive
+              ? L.divIcon({
+                  className: '',
+                  html: `<div style="width:18px;height:18px;border-radius:50%;background:#e53935;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.4)"></div>`,
+                  iconSize: [18, 18],
+                  iconAnchor: [9, 9],
+                })
+              : undefined;
+            return (
+              <Marker
+                key={loc.id}
+                position={[loc.lat, loc.lng]}
+                icon={icon || undefined}
+                eventHandlers={{
+                  click: () => onLocationClick?.(loc.id),
+                }}
+              >
+                <Popup>
+                  <div>
+                    <strong>{loc.name}</strong>
+                    {loc.type && <div className="text-xs text-slate-600">Type: {loc.type}</div>}
+                    {loc.theatre_id && (
+                      <div className="text-xs text-slate-600">Theatre: {loc.theatre_id}</div>
+                    )}
+                    {onLocationClick && (
+                      <button
+                        className="mt-1 text-xs text-blue-600 underline"
+                        onClick={() => onLocationClick(loc.id)}
+                      >
+                        Filter events
+                      </button>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
         </MapContainer>
       </div>
     </div>

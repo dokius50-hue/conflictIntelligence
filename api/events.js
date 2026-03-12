@@ -14,6 +14,9 @@ module.exports = async (req, res) => {
       const theatres = req.query.theatres.split(',').map((t) => t.trim()).filter(Boolean);
       if (theatres.length) q = q.overlaps('theatres', theatres);
     }
+    if (req.query.location_id) {
+      q = q.eq('location_id', req.query.location_id.trim());
+    }
     const { data, error } = await q;
     if (error) throw error;
     return res.status(200).json(data || []);
