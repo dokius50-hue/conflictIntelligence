@@ -13,7 +13,7 @@ Add two new tabs to the Config Editor so analysts can manually correct option an
 - **Options tab** — List all `config_options` grouped by actor; each row has a status dropdown (`available` / `executed` / `degraded` / `foreclosed`) and Save button.
 - **Thresholds tab** — List `config_threshold_conditions` grouped under parent thresholds; each condition has a met/unmet toggle and Save button.
 
-**Implementation plan:** See `docs/plans/config_editor_expansion_a2770464.plan.md` (or `.cursor/plans/` if moved). Summary:
+**Implementation plan:** See `docs/plans/config_editor_expansion.md`. Summary:
 
 - Create `api/config-options.js` (GET + PATCH, admin auth)
 - Create `api/config-threshold-conditions.js` (GET + PATCH with threshold-crossing check, admin auth)
