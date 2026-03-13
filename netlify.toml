@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+# Route all /api/* traffic to the single serverless function.
+# Netlify passes the original request path (e.g. /api/events) to the
+# function, so Express route strings match without any path stripping.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api"
+  status = 200
+
+# SPA fallback — any non-API, non-asset URL serves index.html so React
+# Router handles client-side routing (e.g. /options, /timeline, /admin/queue).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
