@@ -1,10 +1,12 @@
 const { getSupabase } = require('./lib/supabase');
+const { requireAdminAuth } = require('./lib/adminAuth');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-key');
   if (req.method === 'OPTIONS') return res.status(204).end();
+  if (!requireAdminAuth(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   let body;
   try {
