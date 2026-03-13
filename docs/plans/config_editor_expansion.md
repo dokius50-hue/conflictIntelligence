@@ -78,7 +78,7 @@ const configThresholdConditions = require('./api/config-threshold-conditions');
 - Fetches `GET /api/config-threshold-conditions` (returns `{ thresholds, conditions }`)
 - Groups conditions under their parent threshold as collapsible sections
 - Each condition row: label, current status badge, toggle button ("Mark Met" / "Mark Unmet")
-- On toggle: `PATCH /api/config-threshold-conditions` with `{ id, updates: { status: 'satisfied' | 'unmet' } }`
+- On toggle: `PATCH /api/config-threshold-conditions` with `{ id, updates: { status: 'met' | 'unmet' } }`
 - If the PATCH response indicates the parent threshold is now `crossed`, show a visual indicator on the threshold header
 
 ---

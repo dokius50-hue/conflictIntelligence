@@ -46,8 +46,8 @@ module.exports = async (req, res) => {
 
     const thresholdsAnnotated = chain.thresholdsAdvanced.map((t) => {
       const conds = conditionsByThreshold[t.id] || [];
-      const satisfied = conds.filter((c) => c.status === 'satisfied').length;
-      return { ...t, conditionsTotal: conds.length, conditionsSatisfied: satisfied };
+      const metCount = conds.filter((c) => c.status === 'met').length;
+      return { ...t, conditionsTotal: conds.length, conditionsSatisfied: metCount };
     });
 
     return res.status(200).json({

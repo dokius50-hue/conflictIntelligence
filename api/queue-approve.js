@@ -70,7 +70,7 @@ module.exports = async (req, res) => {
 
       const conditionIds = eventRow.thresholds_advanced || [];
       for (const id of conditionIds) {
-        const { error: condErr } = await supabase.from('config_threshold_conditions').update({ status: 'satisfied' }).eq('id', id);
+        const { error: condErr } = await supabase.from('config_threshold_conditions').update({ status: 'met' }).eq('id', id);
         if (condErr) throw condErr;
       }
 
@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
           const allSatisfied =
             Array.isArray(allConds) &&
             allConds.length > 0 &&
-            allConds.every((c) => c.status === 'satisfied');
+            allConds.every((c) => c.status === 'met');
           if (allSatisfied) {
             await supabase.from('config_thresholds').update({ status: 'crossed' }).eq('id', thresholdId);
           }

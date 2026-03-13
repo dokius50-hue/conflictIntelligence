@@ -36,6 +36,8 @@ Config records reference events to provide evidence trails (`evidence_event_id`,
 
 Every table has a `metadata` column for unanticipated fields. The discipline: if a field appears in `metadata` across two conflicts in a row, promote it to a real column via migration. Do not use `metadata` as a permanent home for fields you know you need.
 
+**Status fields consumed by reasoning functions are enforced with CHECK constraints.** These are the schema's load-bearing vocabulary. Free text applies to conflict-specific descriptive fields (actor sides, location types), not to internal state machine values that reasoning functions branch on.
+
 ---
 
 ## For the Vibe-Coding AI — Read This First
