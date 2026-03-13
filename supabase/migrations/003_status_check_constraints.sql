@@ -5,6 +5,9 @@
 -- Fix any rows with incorrect 'satisfied' value (bug fix before constraint)
 UPDATE config_threshold_conditions SET status = 'met' WHERE status = 'satisfied';
 
+-- Fix config_thresholds: 'uncrossed' is legacy synonym for 'not_approaching'
+UPDATE config_thresholds SET status = 'not_approaching' WHERE status = 'uncrossed';
+
 ALTER TABLE config_threshold_conditions
   ADD CONSTRAINT config_threshold_conditions_status_check
   CHECK (status IN ('met', 'unmet', 'no_longer_applicable'));
