@@ -57,10 +57,6 @@ async function fetchViaRapidAPI(handle, sinceId) {
 
   try {
     const userData = await httpGetJson(userOptions);
-    // Inspect once while stabilising mapping.
-    try {
-      console.log('twitter241 /user raw (truncated):', JSON.stringify(userData).slice(0, 400));
-    } catch {}
     const userRestId =
       userData?.result?.data?.user?.result?.rest_id ||
       userData?.data?.user?.result?.rest_id ||
@@ -74,7 +70,9 @@ async function fetchViaRapidAPI(handle, sinceId) {
     }
 
     // Step 2: fetch tweets via /user-tweets?user=<rest_id>&count=20
-    const tweetsQuery = new URLSearchParams({ user: String(userRestId), count: '20' });
+    const tweetsParams = { user: String(userRestId), count: '20' };
+    if (sinceId) tweetsParams.since_id = String(sinceId);
+    const tweetsQuery = new URLSearchParams(tweetsParams);
     const tweetsOptions = {
       method: 'GET',
       hostname: host,

@@ -51,7 +51,55 @@ module.exports = async (req, res) => {
     };
     const { data: inserted, error: insertErr } = await supabase.from('events').insert(eventRow).select('id').single();
     if (insertErr) throw insertErr;
-    await supabase.from('events_queue').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: edits.approved_by ?? null }).eq('id', queue_id);
+
+    // Propagate option and threshold state changes to config tables.
+    // On failure: roll back the published event so the queue item stays pending.
+    try {
+      const optionStatusMap = [
+        ...(eventRow.options_executed || []).map((id) => ({ id, status: 'executed' })),
+        ...(eventRow.options_degraded || []).map((id) => ({ id, status: 'degraded' })),
+        ...(eventRow.options_foreclosed || []).map((id) => ({ id, status: 'foreclosed' })),
+        ...(eventRow.options_unlocked || []).map((id) => ({ id, status: 'available' })),
+      ];
+      for (const { id, status } of optionStatusMap) {
+        const { error: optErr } = await supabase.from('config_options').update({ status }).eq('id', id);
+        if (optErr) throw optErr;
+      }
+
+      const conditionIds = eventRow.thresholds_advanced || [];
+      for (const id of conditionIds) {
+        const { error: condErr } = await supabase.from('config_threshold_conditions').update({ status: 'satisfied' }).eq('id', id);
+        if (condErr) throw condErr;
+      }
+
+      // Check whether any affected threshold is now fully crossed (all conditions satisfied).
+      if (conditionIds.length > 0) {
+        const { data: advancedRows } = await supabase
+          .from('config_threshold_conditions')
+          .select('threshold_id')
+          .in('id', conditionIds);
+        const affectedThresholdIds = [...new Set((advancedRows || []).map((c) => c.threshold_id))];
+        for (const thresholdId of affectedThresholdIds) {
+          const { data: allConds } = await supabase
+            .from('config_threshold_conditions')
+            .select('status')
+            .eq('threshold_id', thresholdId);
+          const allSatisfied =
+            Array.isArray(allConds) &&
+            allConds.length > 0 &&
+            allConds.every((c) => c.status === 'satisfied');
+          if (allSatisfied) {
+            await supabase.from('config_thresholds').update({ status: 'crossed' }).eq('id', thresholdId);
+          }
+        }
+      }
+
+      await supabase.from('events_queue').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: edits.approved_by ?? null }).eq('id', queue_id);
+    } catch (postInsertErr) {
+      await supabase.from('events').delete().eq('id', inserted.id);
+      throw postInsertErr;
+    }
+
     return res.status(200).json({ event_id: inserted.id });
   } catch (e) {
     return res.status(500).json({ error: e.message });

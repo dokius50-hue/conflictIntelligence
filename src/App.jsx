@@ -1,7 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
-import EventTimeline from './pages/EventTimeline';
+import TimelinePage from './pages/TimelinePage';
 import AdminQueue from './admin/AdminQueue';
 import TweetQueue from './admin/TweetQueue';
 import ConfigEditor from './admin/ConfigEditor';
@@ -17,7 +17,7 @@ export default function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/timeline" element={<EventTimeline standalone={true} />} />
+        <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/map" element={<MapWithTimeline />} />
         <Route path="/options" element={<OptionView />} />
         <Route path="/thresholds" element={<ThresholdView />} />

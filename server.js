@@ -21,6 +21,7 @@ const thresholds = require('./api/thresholds');
 const scenarios = require('./api/scenarios');
 const perspectives = require('./api/perspectives');
 const market = require('./api/market');
+const causalChain = require('./api/causal-chain');
 
 const routes = {
   '/api/queue-pending': queuePending,
@@ -38,6 +39,7 @@ const routes = {
   '/api/scenarios': scenarios,
   '/api/perspectives': perspectives,
   '/api/market': market,
+  '/api/causal-chain': causalChain,
 };
 
 const ADMIN_ROUTES = new Set([

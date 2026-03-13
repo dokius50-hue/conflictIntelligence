@@ -29,7 +29,7 @@ async function callPerplexity(prompt) {
     console.warn('PERPLEXITY_API_KEY not set; skipping live call. Use raw fixture for testing.');
     return null;
   }
-  const res = await fetch('https://api.perplexity.ai/v1/sonar', {
+  const res = await fetch('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
