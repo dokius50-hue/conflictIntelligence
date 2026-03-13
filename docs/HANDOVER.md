@@ -45,6 +45,13 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 | market_snapshots | 4 (Mar 1, 5, 10, 12) |
 | market_snapshot_values | 16 |
 
+### Recently completed (March 2026)
+
+- **Ingestion fixes** — Perplexity endpoint corrected to `https://api.perplexity.ai/chat/completions`; Twitter `sinceId` forwarded as `since_id` to RapidAPI; debug `console.log` removed.
+- **Option/threshold status auto-updates** — Approving an event in the queue now updates `config_options.status` and `config_threshold_conditions.status`; if all conditions for a threshold are satisfied, `config_thresholds.status` is set to `crossed`. Rollback on failure (deletes the published event).
+- **Causal chain view** — Click an event on the Timeline page → panel shows option changes, threshold progress, scenarios at risk. API: `GET /api/causal-chain?event_id=`. New: `CausalChainPanel`, `TimelinePage`, `useCausalChain` hook.
+- **Production deploy (Netlify)** — `netlify.toml`, `netlify/functions/api.js` (Express + serverless-http wrapping all 16 api handlers). Admin auth guards added to all 8 admin handlers for serverless (no central `server.js` middleware on Netlify). Vercel removed.
+
 ---
 
 ## How to run
@@ -59,12 +66,11 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 
 ## Next steps (priority order)
 
-1. **Live ingestion cycle** — Run `npm run ingest:perplexity` and `npm run ingest:twitter` to refill queues with current data. Process events through Admin Queue with proper option/threshold tagging — this is the core editorial workflow and should be done regularly.
-2. **Option/threshold status updates from queue** — Wire the Edit & Approve modal so approving an event with `options_executed` / `thresholds_advanced` automatically marks those records in Supabase (`config_options.status`, `config_threshold_conditions.status`). Currently the event stores the tag IDs but the config tables aren't updated.
-3. **Causal chain view** — Click an event → see cross-actor option effects and which threshold conditions it advanced (`lib/reasoning/causal-chain.js` is scaffolded, `lib/reasoning/options.getOptionChangesFromEvent` exists).
-4. **Production deploy** — Vercel deployment. `api/*.js` are already Vercel serverless format. `server.js` is dev-only. Check/write `vercel.json` rewrites. Supabase RLS: anon key for public reads, service key for admin writes (already separated in `api/lib/supabase.js`).
-5. **Config expansion** — As events are approved, use Config Editor to mark options as executed/degraded and threshold conditions as met. The analytical views will update in real-time.
-6. **Multi-conflict** — Framework is conflict-agnostic. Adding a new conflict: insert `config_conflicts` row, write SQL seed for all `config_*` tables, set `CONFLICT_ID` env var. Zero code changes needed.
+See **`docs/NEXT_STEPS.md`** for the full list. Summary:
+
+1. **Config Editor expansion** — Add Options and Thresholds tabs so analysts can manually mark options as executed/degraded and threshold conditions as met. Plan in `.cursor/plans/config_editor_expansion_a2770464.plan.md`.
+2. **Connect to Netlify** — Code is ready. Import from Git at app.netlify.com, set env vars, deploy.
+3. **Multi-conflict** — Zero code. Guide in `CONFLICT_INTELLIGENCE_README.md`.
 
 ---
 
@@ -79,10 +85,13 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 | Twitter client | `scripts/lib/twitter-client.js` |
 | DB query tools | `lib/db/` (events, options, thresholds, scenarios, perspectives, config, queue, market) |
 | Reasoning functions | `lib/reasoning/` (options, thresholds, scenarios, causal-chain) |
-| API endpoints | `api/` (events, options, thresholds, scenarios, perspectives, market, config, queue-*, tweets-*, config-*, validate-config) |
-| React hooks | `src/hooks/` (useEvents, useOptions, useThresholds, useScenarios, usePerspectives, useMarket, useConfig) |
-| Pages | `src/pages/` (EventTimeline, MapWithTimeline, SituationMap, OptionView, ThresholdView, ScenarioView, PerspectivesView, MarketView, Home) |
+| API endpoints | `api/` (events, options, thresholds, scenarios, perspectives, market, config, queue-*, tweets-*, config-*, causal-chain, validate-config) |
+| React hooks | `src/hooks/` (useEvents, useOptions, useThresholds, useScenarios, usePerspectives, useMarket, useConfig, useCausalChain) |
+| Pages | `src/pages/` (EventTimeline, TimelinePage, MapWithTimeline, SituationMap, OptionView, ThresholdView, ScenarioView, PerspectivesView, MarketView, Home) |
 | Admin pages | `src/admin/` (AdminQueue, TweetQueue, ConfigEditor) |
+| Components | `src/components/` (Layout, CausalChainPanel) |
+| Netlify | `netlify.toml`, `netlify/functions/api.js` |
+| Next steps | `docs/NEXT_STEPS.md` |
 | Architecture | `CONFLICT_INTELLIGENCE_README.md` |
 
 ---
@@ -95,15 +104,17 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 - **`config_theatres` has no `is_active` column** — don't filter on it. Theatres are always active in the current schema.
 - **`config_threshold_conditions` has no `conflict_id`** — conditions are linked to thresholds by `threshold_id` only. Query conditions by `threshold_id[]`, not by conflict.
 - **`config_scenario_conditions` has no `conflict_id`** — same pattern as threshold conditions.
-- **Twitter RapidAPI (twitter241):** Two-step flow: `GET /user?username=<handle>` → parse `result.data.user.result.rest_id` → `GET /user-tweets?user=<rest_id>&count=20`. Response is GraphQL-style nested JSON; tweets live in `result.timeline.instructions[*].entries[*].content.itemContent.tweet_results.result`. Protected accounts return empty timelines silently. Use known public OSINT accounts: `wartranslated`, `GeoConfirmed`, `NLwartracker`, `sentdefender`.
-- **Perplexity:** Sonar API endpoint `https://api.perplexity.ai/v1/sonar`, model `sonar`. Hallucination is systematic — URL required for approval, raw toggle one click away in admin queue.
-- **Admin auth:** `ADMIN_API_KEY` env var on server, `VITE_ADMIN_API_KEY` on client (same value). If unset, all admin routes are open (safe for local dev). Use `Authorization: Bearer <key>` or `x-admin-key` header.
+- **Twitter RapidAPI (twitter241):** Two-step flow: `GET /user?username=<handle>` → parse `result.data.user.result.rest_id` → `GET /user-tweets?user=<rest_id>&count=20`. Pass `since_id` as query param when present to avoid re-fetching the same 20 tweets. Response is GraphQL-style nested JSON; tweets live in `result.timeline.instructions[*].entries[*].content.itemContent.tweet_results.result`. Protected accounts return empty timelines silently. Use known public OSINT accounts: `wartranslated`, `GeoConfirmed`, `NLwartracker`, `sentdefender`.
+- **Perplexity:** Use `https://api.perplexity.ai/chat/completions` (not `/v1/sonar`). Model `sonar`. Hallucination is systematic — URL required for approval, raw toggle one click away in admin queue.
+- **Admin auth:** `ADMIN_API_KEY` env var on server, `VITE_ADMIN_API_KEY` on client (same value). If unset, all admin routes are open (safe for local dev). Use `Authorization: Bearer <key>` or `x-admin-key` header. On Netlify, each admin handler must call `requireAdminAuth(req, res)` at the start (no central middleware).
 - **Conflict ID:** `hormuz_2026`. Primary via `VITE_CONFLICT_ID` env; URL param override for multi-conflict routing later.
 - **Schema:** `events.queue_id` is a first-class column (not in metadata). `validate_config_references()` is a Postgres RPC — call after every config save and surface dangles as non-blocking inline warnings.
 - **Recharts peer deps:** Install with `--legacy-peer-deps` if React 18 conflicts arise (react-leaflet@4 also requires this).
 - **API server restarts:** `server.js` is a persistent Node process — must be restarted (`pkill -f "node server.js"`) after changes to `api/` files or `lib/` files. The Vite dev server hot-reloads automatically.
 - **Supabase MCP for seeding:** Use `execute_sql` via MCP for bulk inserts and schema checks. Always verify column names before inserting — several tables lack columns you'd expect (`is_active` on theatres, `conflict_id` on threshold/scenario conditions).
+- **Netlify:** Single Express app in `netlify/functions/api.js` wraps all 16 `api/*.js` handlers via `serverless-http`. No changes to handler files needed — they already use Express-style req/res. Admin auth must be enforced inside each admin handler (no central middleware on Netlify). `netlify.toml` defines build, publish dir, function dir, and redirects (API → function, SPA fallback).
+- **Config status propagation:** When approving an event, `queue-approve.js` now updates `config_options.status` and `config_threshold_conditions.status`. If all conditions for a threshold become satisfied, `config_thresholds.status = 'crossed'`. On any post-insert failure, the published event is deleted so the queue item stays pending.
 
 ---
 
-*Last updated: March 2026 — all B1–B7 stages complete, full platform functional.*
+*Last updated: March 2026 — ingestion fixes, status wiring, causal chain, Netlify prep complete. See docs/NEXT_STEPS.md for remaining work.*
