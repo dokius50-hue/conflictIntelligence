@@ -57,7 +57,7 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 ## How to run
 
 1. **Env** — `.env` must have `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`. Optional: `CONFLICT_ID`, `PERPLEXITY_API_KEY`, `ANTHROPIC_API_KEY`. Admin protection: `ADMIN_API_KEY` + `VITE_ADMIN_API_KEY` (same value — if unset, all admin routes are open). Twitter: `TWITTER_API_MODE=rapidapi`, `RAPIDAPI_KEY`.
-2. **Dev servers** — Two terminals: `npm run dev:api` (API on :3001), `npm run dev` (Vite on :5173). Frontend proxies `/api` to :3001.
+2. **Dev servers** — Two terminals: `npm run dev:api` (API on :3001), `npm run dev` (Vite on :5173). Or one: `npm run dev:all`. Frontend proxies `/api` to :3001.
    > ⚠️ **`server.js` is a persistent Node process** — it does NOT restart automatically after terminal sessions end or after changes to `api/` or `lib/` files. Always restart it manually: `pkill -f "node server.js" && npm run dev:api`. If you see "Failed to fetch" errors in the browser, the API server has died.
 3. **Ingestion** — `npm run ingest:perplexity` → `events_queue`; `npm run ingest:twitter` → `tweets_queue`.
 4. **App** — http://localhost:5173. Nav: Timeline | Map | Options | Thresholds | Scenarios | Perspectives | Market | (admin) Event Queue | Tweet Queue | Config.

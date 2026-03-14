@@ -104,7 +104,7 @@ export default function CausalChainPanel({ event, onClose }) {
             Causal Chain
           </p>
           <h3 className="mt-0.5 text-sm font-semibold text-slate-800 leading-snug">
-            {event.title}
+            {event?.title ?? 'Event'}
           </h3>
         </div>
         <button
@@ -132,10 +132,10 @@ export default function CausalChainPanel({ event, onClose }) {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Option State Changes
               </p>
-              <OptionList title="Executed" options={data.optionChanges.executed} statusKey="executed" />
-              <OptionList title="Degraded" options={data.optionChanges.degraded} statusKey="degraded" />
-              <OptionList title="Foreclosed" options={data.optionChanges.foreclosed} statusKey="foreclosed" />
-              <OptionList title="Unlocked" options={data.optionChanges.unlocked} statusKey="available" />
+              <OptionList title="Executed" options={data.optionChanges?.executed} statusKey="executed" />
+              <OptionList title="Degraded" options={data.optionChanges?.degraded} statusKey="degraded" />
+              <OptionList title="Foreclosed" options={data.optionChanges?.foreclosed} statusKey="foreclosed" />
+              <OptionList title="Unlocked" options={data.optionChanges?.unlocked} statusKey="available" />
             </section>
           )}
 
@@ -145,8 +145,8 @@ export default function CausalChainPanel({ event, onClose }) {
                 Thresholds Advanced
               </p>
               <ul className="space-y-1.5">
-                {data.thresholdsAdvanced.map((t) => (
-                  <ThresholdProgress key={t.id} threshold={t} />
+                {(data.thresholdsAdvanced || []).map((t, i) => (
+                  <ThresholdProgress key={t.id ?? t.label ?? i} threshold={t} />
                 ))}
               </ul>
             </section>
@@ -158,9 +158,9 @@ export default function CausalChainPanel({ event, onClose }) {
                 Scenarios at Risk
               </p>
               <ul className="space-y-1">
-                {data.scenariosAtRisk.map((s) => (
+                {(data.scenariosAtRisk || []).map((s, i) => (
                   <li
-                    key={s.id}
+                    key={s.id ?? s.label ?? i}
                     className="rounded border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-800"
                   >
                     <span className="font-medium">{s.label || s.id}</span>
