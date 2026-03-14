@@ -33,21 +33,34 @@ export default function Layout({ children }) {
   const { conflictId, setConflictId } = useConflict();
   const safeConflictId = conflictId ?? DEFAULT_CONFLICT;
   const [conflicts, setConflicts] = useState([]);
+  const [apiUnreachable, setApiUnreachable] = useState(false);
   const isAdmin = pathname.startsWith('/admin');
 
   useEffect(() => {
+    setApiUnreachable(false);
     fetch('/api/conflicts')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('API unreachable');
+        return r.json();
+      })
       .then((data) => setConflicts(Array.isArray(data) ? data : []))
-      .catch(() => setConflicts([]));
+      .catch(() => {
+        setConflicts([]);
+        setApiUnreachable(true);
+      });
   }, []);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
+      {apiUnreachable && (
+        <div className="bg-amber-100 border-b border-amber-300 px-4 py-2 text-center text-sm text-amber-900">
+          API server unreachable. Run <code className="bg-amber-200 px-1 rounded">npm run dev:api</code> in another terminal (or <code className="bg-amber-200 px-1 rounded">npm run dev:all</code>).
+        </div>
+      )}
       <header className="border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto max-w-7xl">
           <div className="flex items-center justify-between">
-            <Link to={navTo('/', conflictId)} className="font-semibold text-slate-800 tracking-tight">
+            <Link to={navTo('/', safeConflictId)} className="font-semibold text-slate-800 tracking-tight">
               Conflict Intelligence
             </Link>
             <div className="flex items-center gap-1 flex-wrap">
