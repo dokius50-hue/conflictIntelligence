@@ -1,5 +1,5 @@
 /**
- * Local dev API server. Admin UI proxies /api to this. On Vercel, use /api/* serverless.
+ * Local dev API server. Admin UI proxies /api to this. On Netlify, use /api/* serverless.
  */
 require('dotenv').config();
 const http = require('http');

@@ -248,7 +248,7 @@ Styling:     Tailwind CSS
 Maps:        Leaflet + react-leaflet
 Charts:      Recharts (market), D3 (network/tree — Phase 2)
 Database:    Supabase (Postgres + RLS from day one)
-Hosting:     Vercel
+Hosting:     Netlify
 Twitter:     RapidAPI (primary) / Twitter v2 direct (env var switch)
 AI tagging:  Claude API — suggestions only, never auto-approved
 Agents:      Agno (Phase 3 — directory scaffolded from day one)
@@ -1224,4 +1224,4 @@ TOPICS: [CONFLICT-SPECIFIC UNDERREPORTED DIMENSIONS]
 *README v4.0 — March 2026*
 *Framework: conflict-agnostic structured situation model*
 *Current instance: 2026 Strait of Hormuz Crisis*
-*Stack: React + Vite + Tailwind + Supabase + Vercel + Agno (Phase 3)*
+*Stack: React + Vite + Tailwind + Supabase + Netlify + Agno (Phase 3)*

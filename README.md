@@ -30,7 +30,7 @@ Structured situation model for live geopolitical crises. See [CONFLICT_INTELLIGE
 
 ## Project layout
 
-- `api/` — Backend (service key). Used by Vite proxy in dev and by Vercel serverless in production.
+- `api/` — Backend (service key). Used by Vite proxy in dev and by Netlify serverless in production.
 - `lib/db/` — Query tool functions (used by scripts and API).
 - `lib/reasoning/` — Pure analytical functions (no DB).
 - `scripts/` — Ingestion and tagging (Perplexity, Twitter, suggest-tags).
