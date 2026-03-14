@@ -14,11 +14,9 @@ Options and Thresholds tabs added. Analysts can manually correct option status a
 
 Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). For reference, env vars used: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ADMIN_API_KEY`, `CONFLICT_ID`, `VITE_CONFLICT_ID`. Optional for ingestion: `PERPLEXITY_API_KEY`, `ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `TWITTER_API_MODE`.
 
-### 3. Multi-conflict UI (implemented; resilience fix pending)
+### 3. ~~Multi-conflict UI~~ (done)
 
-**Done:** Option A (URL param). Conflict dropdown in header, `?conflict_id=` in URLs, all hooks and admin pages wired. Second conflict `pak_afg_2025` seeded (`004_seed_pak_afg.sql`).
-
-**Pending:** Resilience fix — `ConflictProvider` uses `useSearchParams` but is outside `Routes`, which can cause localhost errors. Move provider inside Routes via layout route. See `docs/plans/fix_multi_conflict_resilience.md`.
+**Done:** Option A (URL param). Conflict dropdown in header, `?conflict_id=` in URLs, all hooks and admin pages wired. Second conflict `pak_afg_2025` seeded (`004_seed_pak_afg.sql`). Resilience fix: `ConflictProvider` moved inside Routes via layout route; defensive `conflictId` in Layout, ConfigEditor, Home.
 
 ---
 

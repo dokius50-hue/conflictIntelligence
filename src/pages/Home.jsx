@@ -12,6 +12,7 @@ function navTo(to, conflictId) {
 
 export default function Home() {
   const { conflictId } = useConflict();
+  const safeConflictId = conflictId ?? DEFAULT_CONFLICT;
   return (
     <div>
       <h1 className="text-2xl font-semibold text-slate-800">Situation Model</h1>
@@ -19,9 +20,9 @@ export default function Home() {
         Structured view of the conflict. Five core views: situation map, event timeline, option elimination, threshold tracker, scenario falsification.
       </p>
       <ul className="mt-4 flex flex-wrap gap-4">
-        <li><Link to={navTo('/timeline', conflictId)} className="text-blue-600 hover:underline">Event Timeline</Link></li>
-        <li><Link to={navTo('/admin/queue', conflictId)} className="text-blue-600 hover:underline">Admin Queue</Link></li>
-        <li><Link to={navTo('/admin/tweets', conflictId)} className="text-blue-600 hover:underline">Tweet Queue</Link></li>
+        <li><Link to={navTo('/timeline', safeConflictId)} className="text-blue-600 hover:underline">Event Timeline</Link></li>
+        <li><Link to={navTo('/admin/queue', safeConflictId)} className="text-blue-600 hover:underline">Admin Queue</Link></li>
+        <li><Link to={navTo('/admin/tweets', safeConflictId)} className="text-blue-600 hover:underline">Tweet Queue</Link></li>
       </ul>
     </div>
   );

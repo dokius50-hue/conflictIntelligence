@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Outlet } from 'react-router-dom';
 import { ConflictProvider } from './contexts/ConflictContext';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -13,11 +13,20 @@ import ScenarioView from './pages/ScenarioView';
 import PerspectivesView from './pages/PerspectivesView';
 import MarketView from './pages/MarketView';
 
-export default function App() {
+function ConflictLayout() {
   return (
     <ConflictProvider>
       <Layout>
-        <Routes>
+        <Outlet />
+      </Layout>
+    </ConflictProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<ConflictLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/map" element={<MapWithTimeline />} />
@@ -29,8 +38,7 @@ export default function App() {
         <Route path="/admin/queue" element={<AdminQueue />} />
         <Route path="/admin/tweets" element={<TweetQueue />} />
         <Route path="/admin/config" element={<ConfigEditor />} />
-        </Routes>
-      </Layout>
-    </ConflictProvider>
+      </Route>
+    </Routes>
   );
 }

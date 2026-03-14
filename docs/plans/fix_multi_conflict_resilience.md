@@ -1,6 +1,6 @@
 # Fix Multi-Conflict UI Resilience
 
-**Status:** Pending. Implement when picking up in new session.
+**Status:** Done (March 2026). Layout route implemented; ConflictProvider now inside Routes.
 
 ## Root cause
 

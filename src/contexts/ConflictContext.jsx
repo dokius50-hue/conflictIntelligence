@@ -26,7 +26,8 @@ export function ConflictProvider({ children }) {
     navigate(`${location.pathname}${query ? `?${query}` : ''}`, { replace: true });
   };
 
-  const value = useMemo(() => ({ conflictId, setConflictId }), [conflictId]);
+  const safeConflictId = conflictId ?? DEFAULT_CONFLICT;
+  const value = useMemo(() => ({ conflictId: safeConflictId, setConflictId }), [safeConflictId]);
 
   return <ConflictContext.Provider value={value}>{children}</ConflictContext.Provider>;
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useConflict } from '../contexts/ConflictContext';
 
 const API = '/api';
+const DEFAULT_CONFLICT = import.meta.env?.VITE_CONFLICT_ID || 'hormuz_2026';
 
 function adminAuthHeaders() {
   const key = import.meta.env.VITE_ADMIN_API_KEY;
@@ -11,6 +12,7 @@ function adminAuthHeaders() {
 
 export default function ConfigEditor() {
   const { conflictId } = useConflict();
+  const safeConflictId = conflictId ?? DEFAULT_CONFLICT;
   const [tab, setTab] = useState('actors');
   return (
     <div>
@@ -31,10 +33,10 @@ export default function ConfigEditor() {
         ))}
       </div>
       <div className="mt-4">
-        {tab === 'actors' && <ActorsPanel conflictId={conflictId} />}
-        {tab === 'theatres' && <TheatresPanel conflictId={conflictId} />}
-        {tab === 'options' && <OptionsPanel conflictId={conflictId} />}
-        {tab === 'thresholds' && <ThresholdsPanel conflictId={conflictId} />}
+        {tab === 'actors' && <ActorsPanel conflictId={safeConflictId} />}
+        {tab === 'theatres' && <TheatresPanel conflictId={safeConflictId} />}
+        {tab === 'options' && <OptionsPanel conflictId={safeConflictId} />}
+        {tab === 'thresholds' && <ThresholdsPanel conflictId={safeConflictId} />}
       </div>
     </div>
   );

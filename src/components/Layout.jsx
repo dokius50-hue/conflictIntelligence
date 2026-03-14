@@ -31,6 +31,7 @@ function navTo(to, conflictId) {
 export default function Layout({ children }) {
   const { pathname } = useLocation();
   const { conflictId, setConflictId } = useConflict();
+  const safeConflictId = conflictId ?? DEFAULT_CONFLICT;
   const [conflicts, setConflicts] = useState([]);
   const isAdmin = pathname.startsWith('/admin');
 
@@ -52,7 +53,7 @@ export default function Layout({ children }) {
             <div className="flex items-center gap-1 flex-wrap">
               {conflicts.length > 1 && (
                 <select
-                  value={conflicts.some((c) => c.id === conflictId) ? conflictId : DEFAULT_CONFLICT}
+                  value={conflicts.some((c) => c.id === safeConflictId) ? safeConflictId : DEFAULT_CONFLICT}
                   onChange={(e) => setConflictId(e.target.value)}
                   className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700 bg-white"
                 >
@@ -66,7 +67,7 @@ export default function Layout({ children }) {
               {NAV.map(({ to, label }) => (
                 <Link
                   key={to}
-                  to={navTo(to, conflictId)}
+                  to={navTo(to, safeConflictId)}
                   className={`rounded px-2.5 py-1 text-sm transition-colors ${
                     pathname === to
                       ? 'bg-slate-900 text-white'
@@ -80,7 +81,7 @@ export default function Layout({ children }) {
               {ADMIN_NAV.map(({ to, label }) => (
                 <Link
                   key={to}
-                  to={navTo(to, conflictId)}
+                  to={navTo(to, safeConflictId)}
                   className={`rounded px-2.5 py-1 text-sm transition-colors ${
                     pathname === to
                       ? 'bg-slate-700 text-white'

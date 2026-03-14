@@ -52,8 +52,7 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 - **Causal chain view** — Click an event on the Timeline page → panel shows option changes, threshold progress, scenarios at risk. API: `GET /api/causal-chain?event_id=`. New: `CausalChainPanel`, `TimelinePage`, `useCausalChain` hook.
 - **Production deploy (Netlify)** — `netlify.toml`, `netlify/functions/api.js` (Express + serverless-http wrapping all 16 api handlers). Admin auth guards added to all 8 admin handlers for serverless (no central `server.js` middleware on Netlify). Vercel removed.
 - **Multi-conflict UI (Option A)** — Implemented URL param-based conflict switching (`?conflict_id=`). Conflict dropdown in header when 2+ conflicts; `navTo()` preserves param in links. API: `GET /api/conflicts` returns active conflicts from `config_conflicts`. All hooks (`useConfig`, `useEvents`, `useOptions`, etc.) use `useConflict()` and refetch when `conflictId` changes. Admin pages (Queue, TweetQueue, ConfigEditor) pass `conflict_id` to APIs.
-- **Known issue:** `ConflictProvider` uses `useSearchParams` but wraps `Layout` and `Routes` — it is a *parent* of Routes. React Router v6 requires these hooks inside a component rendered within `<Routes>`. This can cause localhost errors.
-- **Fix planned:** Use a layout route so `ConflictProvider` is rendered inside Routes. See `docs/plans/fix_multi_conflict_resilience.md`.
+- **Resilience fix (done):** `ConflictProvider` moved inside Routes via layout route (`ConflictLayout` with `Outlet`). Defensive `conflictId ?? DEFAULT_CONFLICT` added in Layout, ConfigEditor, Home. See `docs/plans/fix_multi_conflict_resilience.md`.
 
 ---
 
@@ -73,7 +72,7 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 
 1. ~~**Config Editor expansion**~~ — Done. Options and Thresholds tabs in Admin → Config.
 2. ~~**Connect to Netlify**~~ — Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). Env checklist: `docs/NETLIFY_ENV.md`.
-3. **Multi-conflict resilience fix** — Move `ConflictProvider` inside Routes via layout route; add defensive `conflictId ?? DEFAULT_CONFLICT`. Plan: `docs/plans/fix_multi_conflict_resilience.md`.
+3. ~~**Multi-conflict resilience fix**~~ — Done. Layout route + defensive conflictId.
 
 ---
 
@@ -125,4 +124,4 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 
 ---
 
-*Last updated: March 2026 — multi-conflict UI (Option A), known provider placement issue, resilience fix planned. See docs/NEXT_STEPS.md for remaining work.*
+*Last updated: March 2026 — multi-conflict UI (Option A), resilience fix complete. See docs/NEXT_STEPS.md for remaining work.*
