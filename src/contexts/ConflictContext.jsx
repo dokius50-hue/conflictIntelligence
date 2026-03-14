@@ -12,7 +12,7 @@ export function ConflictProvider({ children }) {
 
   const conflictId = useMemo(() => {
     const fromUrl = searchParams.get('conflict_id');
-    return fromUrl || DEFAULT_CONFLICT;
+    return (fromUrl && fromUrl.trim()) ? fromUrl.trim() : DEFAULT_CONFLICT;
   }, [searchParams]);
 
   const setConflictId = (id) => {

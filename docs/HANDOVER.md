@@ -25,11 +25,11 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
   - **B6 Analyst Perspectives Panel** — theatre filter (All/Gulf/Red Sea), osint/analyst type badges, tweet cards with source links.
   - **B7 Market Panel** — Recharts line charts, 4 indicators (Brent Crude, Suezmax tanker rate, war risk insurance, EU gas) with 4 time-series snapshots from baseline (Mar 1) to current (Mar 12).
 
-### Supabase data state (hormuz_2026)
+### Supabase data state
 
 | Table | Rows |
 |---|---|
-| config_conflicts | 1 |
+| config_conflicts | 2 (hormuz_2026, pak_afg_2025 — see `004_seed_pak_afg.sql`) |
 | config_actors | ~6 (iran, usa, gcc, israel, russia, china) |
 | config_theatres | 2 (gulf_waters, red_sea) with bounds set |
 | config_locations | 7 (Hormuz, Bandar Abbas, Ras Tanura, Fujairah, Abu Musa, Bab el-Mandeb, Jeddah) |
@@ -51,6 +51,9 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 - **Option/threshold status auto-updates** — Approving an event in the queue now updates `config_options.status` and `config_threshold_conditions.status`; if all conditions for a threshold are satisfied, `config_thresholds.status` is set to `crossed`. Rollback on failure (deletes the published event).
 - **Causal chain view** — Click an event on the Timeline page → panel shows option changes, threshold progress, scenarios at risk. API: `GET /api/causal-chain?event_id=`. New: `CausalChainPanel`, `TimelinePage`, `useCausalChain` hook.
 - **Production deploy (Netlify)** — `netlify.toml`, `netlify/functions/api.js` (Express + serverless-http wrapping all 16 api handlers). Admin auth guards added to all 8 admin handlers for serverless (no central `server.js` middleware on Netlify). Vercel removed.
+- **Multi-conflict UI (Option A)** — Implemented URL param-based conflict switching (`?conflict_id=`). Conflict dropdown in header when 2+ conflicts; `navTo()` preserves param in links. API: `GET /api/conflicts` returns active conflicts from `config_conflicts`. All hooks (`useConfig`, `useEvents`, `useOptions`, etc.) use `useConflict()` and refetch when `conflictId` changes. Admin pages (Queue, TweetQueue, ConfigEditor) pass `conflict_id` to APIs.
+- **Known issue:** `ConflictProvider` uses `useSearchParams` but wraps `Layout` and `Routes` — it is a *parent* of Routes. React Router v6 requires these hooks inside a component rendered within `<Routes>`. This can cause localhost errors.
+- **Fix planned:** Use a layout route so `ConflictProvider` is rendered inside Routes. See `docs/plans/fix_multi_conflict_resilience.md`.
 
 ---
 
@@ -70,7 +73,7 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 
 1. ~~**Config Editor expansion**~~ — Done. Options and Thresholds tabs in Admin → Config.
 2. ~~**Connect to Netlify**~~ — Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). Env checklist: `docs/NETLIFY_ENV.md`.
-3. **Multi-conflict** — Zero code. Guide in `CONFLICT_INTELLIGENCE_README.md`.
+3. **Multi-conflict resilience fix** — Move `ConflictProvider` inside Routes via layout route; add defensive `conflictId ?? DEFAULT_CONFLICT`. Plan: `docs/plans/fix_multi_conflict_resilience.md`.
 
 ---
 
@@ -90,6 +93,9 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 | Pages | `src/pages/` (EventTimeline, TimelinePage, MapWithTimeline, SituationMap, OptionView, ThresholdView, ScenarioView, PerspectivesView, MarketView, Home) |
 | Admin pages | `src/admin/` (AdminQueue, TweetQueue, ConfigEditor) |
 | Components | `src/components/` (Layout, CausalChainPanel) |
+| Conflict context | `src/contexts/ConflictContext.jsx` |
+| Conflicts API | `api/conflicts.js` |
+| Resilience fix plan | `docs/plans/fix_multi_conflict_resilience.md` |
 | Netlify | `netlify.toml`, `netlify/functions/api.js` |
 | Next steps | `docs/NEXT_STEPS.md` |
 | Architecture | `CONFLICT_INTELLIGENCE_README.md` |
@@ -107,7 +113,9 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 - **Twitter RapidAPI (twitter241):** Two-step flow: `GET /user?username=<handle>` → parse `result.data.user.result.rest_id` → `GET /user-tweets?user=<rest_id>&count=20`. Pass `since_id` as query param when present to avoid re-fetching the same 20 tweets. Response is GraphQL-style nested JSON; tweets live in `result.timeline.instructions[*].entries[*].content.itemContent.tweet_results.result`. Protected accounts return empty timelines silently. Use known public OSINT accounts: `wartranslated`, `GeoConfirmed`, `NLwartracker`, `sentdefender`.
 - **Perplexity:** Use `https://api.perplexity.ai/chat/completions` (not `/v1/sonar`). Model `sonar`. Hallucination is systematic — URL required for approval, raw toggle one click away in admin queue.
 - **Admin auth:** `ADMIN_API_KEY` env var on server, `VITE_ADMIN_API_KEY` on client (same value). If unset, all admin routes are open (safe for local dev). Use `Authorization: Bearer <key>` or `x-admin-key` header. On Netlify, each admin handler must call `requireAdminAuth(req, res)` at the start (no central middleware).
-- **Conflict ID:** `hormuz_2026`. Primary via `VITE_CONFLICT_ID` env; URL param override for multi-conflict routing later.
+- **Conflict ID:** `hormuz_2026`. Primary via `VITE_CONFLICT_ID` env; URL param `?conflict_id=` overrides for multi-conflict. Resolution order: URL param → `VITE_CONFLICT_ID` → `hormuz_2026`.
+- **React Router v6:** `useSearchParams`, `useNavigate`, `useLocation` must be used inside a component rendered within `<Routes>`, not as parents of `Routes`. Use a layout route (`Route element={<LayoutWithProvider />}` with `<Outlet />`) so providers live inside the Routes tree.
+- **Future hybrid domains:** Same app can support single-domain (URL param) and subdomain-per-conflict (different `VITE_CONFLICT_ID` per deploy).
 - **Schema:** `events.queue_id` is a first-class column (not in metadata). `validate_config_references()` is a Postgres RPC — call after every config save and surface dangles as non-blocking inline warnings.
 - **Recharts peer deps:** Install with `--legacy-peer-deps` if React 18 conflicts arise (react-leaflet@4 also requires this).
 - **API server restarts:** `server.js` is a persistent Node process — must be restarted (`pkill -f "node server.js"`) after changes to `api/` files or `lib/` files. The Vite dev server hot-reloads automatically.
@@ -117,4 +125,4 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 
 ---
 
-*Last updated: March 2026 — ingestion fixes, status wiring, causal chain, Netlify prep complete. See docs/NEXT_STEPS.md for remaining work.*
+*Last updated: March 2026 — multi-conflict UI (Option A), known provider placement issue, resilience fix planned. See docs/NEXT_STEPS.md for remaining work.*

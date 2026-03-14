@@ -52,7 +52,7 @@ export default function Layout({ children }) {
             <div className="flex items-center gap-1 flex-wrap">
               {conflicts.length > 1 && (
                 <select
-                  value={conflictId}
+                  value={conflicts.some((c) => c.id === conflictId) ? conflictId : DEFAULT_CONFLICT}
                   onChange={(e) => setConflictId(e.target.value)}
                   className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700 bg-white"
                 >
