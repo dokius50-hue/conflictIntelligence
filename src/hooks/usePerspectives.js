@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
-
-const conflictId = () =>
-  (typeof window !== 'undefined' && window.__CONFLICT_ID__) ||
-  import.meta.env?.VITE_CONFLICT_ID ||
-  'hormuz_2026';
+import { useConflict } from '../contexts/ConflictContext';
 
 export function usePerspectives(theatre = null) {
+  const { conflictId } = useConflict();
   const [perspectives, setPerspectives] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const params = new URLSearchParams({ conflict_id: conflictId() });
+    const params = new URLSearchParams({ conflict_id: conflictId });
     if (theatre) params.set('theatre', theatre);
     fetch(`/api/perspectives?${params}`)
       .then((r) => r.json())
@@ -21,7 +18,7 @@ export function usePerspectives(theatre = null) {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [theatre]);
+  }, [conflictId, theatre]);
 
   return { perspectives, loading, error };
 }

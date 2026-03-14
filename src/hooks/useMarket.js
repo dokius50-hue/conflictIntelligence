@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
-
-const conflictId = () =>
-  (typeof window !== 'undefined' && window.__CONFLICT_ID__) ||
-  import.meta.env?.VITE_CONFLICT_ID ||
-  'hormuz_2026';
+import { useConflict } from '../contexts/ConflictContext';
 
 export function useMarket() {
+  const { conflictId } = useConflict();
   const [indicators, setIndicators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/market?conflict_id=${conflictId()}`)
+    fetch(`/api/market?conflict_id=${conflictId}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setError(d.error);
@@ -19,7 +16,7 @@ export function useMarket() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [conflictId]);
 
   return { indicators, loading, error };
 }

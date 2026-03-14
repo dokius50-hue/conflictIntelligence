@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
-
-const conflictId = () =>
-  (typeof window !== 'undefined' && window.__CONFLICT_ID__) ||
-  import.meta.env?.VITE_CONFLICT_ID ||
-  'hormuz_2026';
+import { useConflict } from '../contexts/ConflictContext';
 
 export function useCausalChain(eventId) {
+  const { conflictId } = useConflict();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -18,7 +15,7 @@ export function useCausalChain(eventId) {
     setLoading(true);
     setData(null);
     setError(null);
-    fetch(`/api/causal-chain?event_id=${eventId}&conflict_id=${conflictId()}`)
+    fetch(`/api/causal-chain?event_id=${eventId}&conflict_id=${conflictId}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setError(d.error);
@@ -26,7 +23,7 @@ export function useCausalChain(eventId) {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [eventId]);
+  }, [eventId, conflictId]);
 
   return { data, loading, error };
 }

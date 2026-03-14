@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useConflict } from '../contexts/ConflictContext';
 
 const API = '/api';
 
@@ -75,6 +76,7 @@ function AITags({ tags }) {
 }
 
 export default function AdminQueue() {
+  const { conflictId } = useConflict();
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -83,7 +85,7 @@ export default function AdminQueue() {
   const [config, setConfig] = useState(null);
 
   useEffect(() => {
-    fetch(`${API}/queue-pending`, { headers: { ...adminAuthHeaders() } })
+    fetch(`${API}/queue-pending?conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => {
         setPending(Array.isArray(data) ? data : []);
@@ -91,15 +93,15 @@ export default function AdminQueue() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [conflictId]);
 
   useEffect(() => {
     if (!editRow) return;
-    fetch(`${API}/config`)
+    fetch(`${API}/config?conflict_id=${encodeURIComponent(conflictId)}`)
       .then((r) => r.json())
       .then((data) => setConfig(data))
       .catch(() => setConfig({ options: [], threshold_conditions: [] }));
-  }, [editRow]);
+  }, [editRow, conflictId]);
 
   const approve = (queueId, edits = {}) => {
     fetch(`${API}/queue-approve`, {
@@ -200,6 +202,7 @@ export default function AdminQueue() {
         <EditApproveModal
           row={editRow}
           config={config}
+          conflictId={conflictId}
           onClose={() => setEditRow(null)}
           onApprove={(edits) => approve(editRow.id, edits)}
           onReject={(notes) => reject(editRow.id, notes)}
@@ -209,7 +212,7 @@ export default function AdminQueue() {
   );
 }
 
-function EditApproveModal({ row, config, onClose, onApprove, onReject }) {
+function EditApproveModal({ row, config, conflictId, onClose, onApprove, onReject }) {
   const [title, setTitle] = useState(row.title ?? '');
   const [description, setDescription] = useState(row.description ?? '');
   const [sourceUrl, setSourceUrl] = useState(row.source_url ?? '');
@@ -224,12 +227,12 @@ function EditApproveModal({ row, config, onClose, onApprove, onReject }) {
   useEffect(() => {
     setBriefLoading(true);
     setBrief(null);
-    fetch(`${API}/review-assist?queue_id=${row.id}`, { headers: { ...adminAuthHeaders() } })
+    fetch(`${API}/review-assist?queue_id=${row.id}&conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => setBrief(data.error ? null : data))
       .catch(() => setBrief(null))
       .finally(() => setBriefLoading(false));
-  }, [row.id]);
+  }, [row.id, conflictId]);
 
   const options = config?.options ?? [];
   const conditions = config?.threshold_conditions ?? [];

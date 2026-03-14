@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { ConflictProvider } from './contexts/ConflictContext';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import TimelinePage from './pages/TimelinePage';
@@ -14,8 +15,9 @@ import MarketView from './pages/MarketView';
 
 export default function App() {
   return (
-    <Layout>
-      <Routes>
+    <ConflictProvider>
+      <Layout>
+        <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/map" element={<MapWithTimeline />} />
@@ -27,7 +29,8 @@ export default function App() {
         <Route path="/admin/queue" element={<AdminQueue />} />
         <Route path="/admin/tweets" element={<TweetQueue />} />
         <Route path="/admin/config" element={<ConfigEditor />} />
-      </Routes>
-    </Layout>
+        </Routes>
+      </Layout>
+    </ConflictProvider>
   );
 }

@@ -25,6 +25,7 @@ const perspectives = require('./api/perspectives');
 const market = require('./api/market');
 const causalChain = require('./api/causal-chain');
 const reviewAssist = require('./api/review-assist');
+const conflicts = require('./api/conflicts');
 
 const routes = {
   '/api/queue-pending': queuePending,
@@ -46,6 +47,7 @@ const routes = {
   '/api/market': market,
   '/api/causal-chain': causalChain,
   '/api/review-assist': reviewAssist,
+  '/api/conflicts': conflicts,
 };
 
 const ADMIN_ROUTES = new Set([

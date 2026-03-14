@@ -31,6 +31,7 @@ const routes = {
   '/api/market':            require('../../api/market'),
   '/api/causal-chain':      require('../../api/causal-chain'),
   '/api/review-assist':     require('../../api/review-assist'),
+  '/api/conflicts':         require('../../api/conflicts'),
 };
 
 for (const [path, handler] of Object.entries(routes)) {

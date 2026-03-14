@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useConflict } from '../contexts/ConflictContext';
 
 const API = '/api';
 
@@ -9,12 +10,13 @@ function adminAuthHeaders() {
 }
 
 export default function TweetQueue() {
+  const { conflictId } = useConflict();
   const [tweets, setTweets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`${API}/tweets-pending`, { headers: { ...adminAuthHeaders() } })
+    fetch(`${API}/tweets-pending?conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => {
         setTweets(Array.isArray(data) ? data : []);
@@ -22,7 +24,7 @@ export default function TweetQueue() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [conflictId]);
 
   const updateDisposition = (id, payload) => {
     fetch(`${API}/tweet-disposition`, {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useConflict } from '../contexts/ConflictContext';
 
 const API = '/api';
 
@@ -9,6 +10,7 @@ function adminAuthHeaders() {
 }
 
 export default function ConfigEditor() {
+  const { conflictId } = useConflict();
   const [tab, setTab] = useState('actors');
   return (
     <div>
@@ -29,23 +31,23 @@ export default function ConfigEditor() {
         ))}
       </div>
       <div className="mt-4">
-        {tab === 'actors' && <ActorsPanel />}
-        {tab === 'theatres' && <TheatresPanel />}
-        {tab === 'options' && <OptionsPanel />}
-        {tab === 'thresholds' && <ThresholdsPanel />}
+        {tab === 'actors' && <ActorsPanel conflictId={conflictId} />}
+        {tab === 'theatres' && <TheatresPanel conflictId={conflictId} />}
+        {tab === 'options' && <OptionsPanel conflictId={conflictId} />}
+        {tab === 'thresholds' && <ThresholdsPanel conflictId={conflictId} />}
       </div>
     </div>
   );
 }
 
-function ActorsPanel() {
+function ActorsPanel({ conflictId }) {
   const [actors, setActors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [warnings, setWarnings] = useState([]);
 
   useEffect(() => {
-    fetch(`${API}/config-actors`, { headers: { ...adminAuthHeaders() } })
+    fetch(`${API}/config-actors?conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => {
         setActors(data.actors || []);
@@ -53,14 +55,14 @@ function ActorsPanel() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [conflictId]);
 
   const updateField = (id, field, value) => {
     setActors((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
   };
 
   const save = (actor) => {
-    fetch(`${API}/config-actors`, {
+    fetch(`${API}/config-actors?conflict_id=${encodeURIComponent(conflictId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', ...adminAuthHeaders() },
       body: JSON.stringify({ id: actor.id, updates: { name: actor.name, short_name: actor.short_name, side: actor.side, color: actor.color, is_active: actor.is_active } }),
@@ -159,14 +161,14 @@ function ActorsPanel() {
   );
 }
 
-function TheatresPanel() {
+function TheatresPanel({ conflictId }) {
   const [theatres, setTheatres] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [warnings, setWarnings] = useState([]);
 
   useEffect(() => {
-    fetch(`${API}/config-theatres`, { headers: { ...adminAuthHeaders() } })
+    fetch(`${API}/config-theatres?conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => {
         setTheatres(data.theatres || []);
@@ -174,7 +176,7 @@ function TheatresPanel() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [conflictId]);
 
   const updateField = (id, field, value) => {
     setTheatres((prev) => prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
@@ -182,7 +184,7 @@ function TheatresPanel() {
 
   const save = (theatre) => {
     const toNumber = (v) => (v === '' || v == null ? null : Number(v));
-    fetch(`${API}/config-theatres`, {
+    fetch(`${API}/config-theatres?conflict_id=${encodeURIComponent(conflictId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', ...adminAuthHeaders() },
       body: JSON.stringify({
@@ -322,14 +324,14 @@ const INTENSITY_DOTS = (n) =>
 
 const ACTOR_COLORS = { iran: '#e53935', usa: '#1565c0', gcc: '#2e7d32' };
 
-function OptionsPanel() {
+function OptionsPanel({ conflictId }) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [warnings, setWarnings] = useState([]);
 
   useEffect(() => {
-    fetch(`${API}/config-options`, { headers: { ...adminAuthHeaders() } })
+    fetch(`${API}/config-options?conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => {
         setOptions(data.options || []);
@@ -337,14 +339,14 @@ function OptionsPanel() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [conflictId]);
 
   const updateStatus = (id, status) => {
     setOptions((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
   };
 
   const save = (opt) => {
-    fetch(`${API}/config-options`, {
+    fetch(`${API}/config-options?conflict_id=${encodeURIComponent(conflictId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', ...adminAuthHeaders() },
       body: JSON.stringify({ id: opt.id, updates: { status: opt.status } }),
@@ -423,7 +425,7 @@ function OptionsPanel() {
   );
 }
 
-function ThresholdsPanel() {
+function ThresholdsPanel({ conflictId }) {
   const [thresholds, setThresholds] = useState([]);
   const [conditions, setConditions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -431,7 +433,7 @@ function ThresholdsPanel() {
   const [expanded, setExpanded] = useState({});
 
   useEffect(() => {
-    fetch(`${API}/config-threshold-conditions`, { headers: { ...adminAuthHeaders() } })
+    fetch(`${API}/config-threshold-conditions?conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
       .then((r) => r.json())
       .then((data) => {
         setThresholds(data.thresholds || []);
@@ -440,11 +442,11 @@ function ThresholdsPanel() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [conflictId]);
 
   const toggle = (cond) => {
     const nextStatus = cond.status === 'met' ? 'unmet' : 'met';
-    fetch(`${API}/config-threshold-conditions`, {
+    fetch(`${API}/config-threshold-conditions?conflict_id=${encodeURIComponent(conflictId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', ...adminAuthHeaders() },
       body: JSON.stringify({ id: cond.id, updates: { status: nextStatus } }),
