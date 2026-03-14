@@ -2,6 +2,8 @@
 
 Structured situation model for live geopolitical crises. See [CONFLICT_INTELLIGENCE_README.md](CONFLICT_INTELLIGENCE_README.md) for full requirements, schema, and build sequence.
 
+**Live:** [conflictintel.netlify.app](https://conflictintel.netlify.app)
+
 ## Quick start
 
 1. **Env**  

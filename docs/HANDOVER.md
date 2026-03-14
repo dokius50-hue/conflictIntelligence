@@ -69,7 +69,7 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 
 1. ~~**Config Editor expansion**~~ — Done. Options and Thresholds tabs in Admin → Config.
-2. **Connect to Netlify** — Code is ready. Import from Git at app.netlify.com, set env vars, deploy.
+2. ~~**Connect to Netlify**~~ — Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). Env checklist: `docs/NETLIFY_ENV.md`.
 3. **Multi-conflict** — Zero code. Guide in `CONFLICT_INTELLIGENCE_README.md`.
 
 ---

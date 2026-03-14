@@ -24,6 +24,7 @@ const scenarios = require('./api/scenarios');
 const perspectives = require('./api/perspectives');
 const market = require('./api/market');
 const causalChain = require('./api/causal-chain');
+const reviewAssist = require('./api/review-assist');
 
 const routes = {
   '/api/queue-pending': queuePending,
@@ -44,6 +45,7 @@ const routes = {
   '/api/perspectives': perspectives,
   '/api/market': market,
   '/api/causal-chain': causalChain,
+  '/api/review-assist': reviewAssist,
 };
 
 const ADMIN_ROUTES = new Set([
@@ -57,6 +59,7 @@ const ADMIN_ROUTES = new Set([
   '/api/config-threshold-conditions',
   '/api/tweets-pending',
   '/api/tweet-disposition',
+  '/api/review-assist',
 ]);
 
 const PORT = process.env.API_PORT || 3001;

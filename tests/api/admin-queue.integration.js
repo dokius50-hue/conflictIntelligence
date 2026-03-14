@@ -63,6 +63,28 @@ async function main() {
     failed++;
   }
 
+  // GET /api/review-assist (expect 404 for fake id, or brief for real id)
+  try {
+    const r = await fetch(`${BASE}/api/review-assist?queue_id=00000000-0000-0000-0000-000000000000`, { headers: headers() });
+    const data = await r.json();
+    if (r.status === 401) {
+      console.log('review-assist: 401 Unauthorized');
+      failed++;
+    } else if (r.status === 404 && data.error) {
+      console.log('review-assist: OK (404 for unknown id)');
+    } else if (r.ok && data.contextSummary !== undefined) {
+      console.log('review-assist: OK, brief returned');
+    } else if (!r.ok && r.status !== 404) {
+      console.log('review-assist: unexpected', r.status, data);
+      failed++;
+    } else {
+      console.log('review-assist: OK');
+    }
+  } catch (e) {
+    console.log('review-assist: fetch failed', e.message);
+    failed++;
+  }
+
   if (failed) process.exit(1);
   console.log('Integration checks passed.');
 }

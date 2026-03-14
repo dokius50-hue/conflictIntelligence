@@ -10,14 +10,9 @@ Use this doc to pick up work in a new session. It lists the remaining tasks in p
 
 Options and Thresholds tabs added. Analysts can manually correct option status and threshold conditions via Admin → Config.
 
-### 2. Connect to Netlify (manual)
+### 2. ~~Connect to Netlify~~ (done)
 
-The codebase is ready for Netlify. Connect when ready:
-
-1. Go to [app.netlify.com](https://app.netlify.com) → Add new site → Import from Git → select this repo
-2. Build settings are auto-detected from `netlify.toml`
-3. Set env vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ADMIN_API_KEY`, `CONFLICT_ID`, `VITE_CONFLICT_ID`
-4. Deploy (or redeploy after adding env vars so `VITE_CONFLICT_ID` is embedded at build time)
+Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). For reference, env vars used: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ADMIN_API_KEY`, `CONFLICT_ID`, `VITE_CONFLICT_ID`. Optional for ingestion: `PERPLEXITY_API_KEY`, `ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `TWITTER_API_MODE`.
 
 ### 3. Multi-conflict (no code)
 
@@ -27,5 +22,8 @@ Zero code changes required. The 8-step guide is in `CONFLICT_INTELLIGENCE_README
 
 ## Future / lower priority
 
-- **Phase 3 Agno agents** — Specs in `agents/ingestion/`, `agents/tagging/`, `agents/review-assist/`. Would automate parts of the human review workflow.
-- **Live ingestion cycle** — Run `npm run ingest:perplexity` and `npm run ingest:twitter` regularly; process events through Admin Queue. Operational workflow, no code needed.
+- **Phase 3 agents** — Review-assist implemented (Edit & Approve modal shows context, source verification, pattern note). Ingestion and tagging agents: specs in `agents/ingestion/`, `agents/tagging/`.
+
+## Live ingestion (scheduled)
+
+GitHub Actions runs `npm run ingest:perplexity` and `npm run ingest:twitter` daily at 12:00 UTC. Add repo secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PERPLEXITY_API_KEY`, `RAPIDAPI_KEY`. Optional repo variable: `CONFLICT_ID` (defaults to `hormuz_2026` if unset). Workflow: `.github/workflows/ingest.yml`. Manual trigger: Actions → Ingest → Run workflow.

@@ -1,6 +1,6 @@
 # Review-assist agents (Phase 3)
 
-Runs when an editor opens a queue item. New capability (no script equivalent).
+**Implemented.** Runs when an editor opens a queue item (Edit & Approve modal). New capability (no script equivalent).
 
 - **Context-builder** — pulls last 72h published events for the same theatres via `lib/db/events.js` (e.g. `getPublishedEvents({ theatres, limit, sinceHours: 72 })`).
 - **Verifier** — fetches source URL, checks key facts in the event record match the page (guards against hallucination).

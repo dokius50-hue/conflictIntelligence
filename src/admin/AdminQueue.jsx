@@ -218,6 +218,18 @@ function EditApproveModal({ row, config, onClose, onApprove, onReject }) {
   const [optionsForeclosed, setOptionsForeclosed] = useState(row.options_foreclosed ?? row.ai_suggested_tags?.options_foreclosed ?? []);
   const [optionsUnlocked, setOptionsUnlocked] = useState(row.options_unlocked ?? row.ai_suggested_tags?.options_unlocked ?? []);
   const [thresholdsAdvanced, setThresholdsAdvanced] = useState(row.thresholds_advanced ?? row.ai_suggested_tags?.thresholds_advanced ?? []);
+  const [brief, setBrief] = useState(null);
+  const [briefLoading, setBriefLoading] = useState(true);
+
+  useEffect(() => {
+    setBriefLoading(true);
+    setBrief(null);
+    fetch(`${API}/review-assist?queue_id=${row.id}`, { headers: { ...adminAuthHeaders() } })
+      .then((r) => r.json())
+      .then((data) => setBrief(data.error ? null : data))
+      .catch(() => setBrief(null))
+      .finally(() => setBriefLoading(false));
+  }, [row.id]);
 
   const options = config?.options ?? [];
   const conditions = config?.threshold_conditions ?? [];
@@ -243,6 +255,17 @@ function EditApproveModal({ row, config, onClose, onApprove, onReject }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold text-slate-800">Edit & Approve</h3>
+        {briefLoading && <p className="mt-2 text-xs text-slate-500">Loading review brief…</p>}
+        {!briefLoading && brief && (
+          <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-3 text-xs">
+            <p><strong>Context:</strong> {brief.contextSummary}</p>
+            <p className="mt-1"><strong>Source:</strong> {brief.verification}</p>
+            <p className="mt-1"><strong>Pattern:</strong> {brief.patternNote}</p>
+            {brief.flags?.length > 0 && (
+              <p className="mt-1 text-amber-700"><strong>Flags:</strong> {brief.flags.join(', ')}</p>
+            )}
+          </div>
+        )}
         <div className="mt-4 space-y-3">
           <label className="block">
             <span className="text-xs font-medium text-slate-500">Title</span>

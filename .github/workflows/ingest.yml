@@ -1,0 +1,40 @@
+# Periodic ingestion: Perplexity + Twitter → events_queue / tweets_queue
+# Runs daily. Add secrets in repo Settings → Secrets and variables → Actions.
+name: Ingest
+
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 12:00 UTC daily
+  workflow_dispatch:       # Allow manual trigger
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Ingest Perplexity
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONFLICT_ID: ${{ vars.CONFLICT_ID }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+        run: npm run ingest:perplexity
+        continue-on-error: true
+
+      - name: Ingest Twitter
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONFLICT_ID: ${{ vars.CONFLICT_ID }}
+          TWITTER_API_MODE: rapidapi
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+        run: npm run ingest:twitter
+        continue-on-error: true
