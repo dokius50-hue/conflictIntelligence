@@ -47,15 +47,25 @@ async function callPerplexity(prompt) {
   return content || null;
 }
 
-async function run() {
-  // TODO: Build prompt from conflict config (valid actor/theatre IDs). Use Appendix A template.
-  const prompt = `You are an intelligence extraction agent. Extract structured event data from recent news about the Strait of Hormuz / Gulf tensions.
+const PROMPTS = {
+  hormuz_2026: `You are an intelligence extraction agent. Extract structured event data from recent news about the Strait of Hormuz / Gulf tensions.
 
 For each distinct event from the last 24-48 hours, return a JSON array with exactly these fields:
 {"reported_at":"ISO 8601","occurred_at":"ISO or null","time_precision":"exact|approximate|date_only|unknown","title":"one line max 80 chars","description":"2-4 sentences factual","theatres":["gulf_waters","red_sea"],"actors":[{"id":"iran","role":"attacker","side":"iran_axis"}],"source_name":"publication","source_url":"full URL required","source_type":"wire|analysis|state_media|social|official","confidence":"high|medium|low","escalation_direction":"escalatory|de-escalatory|neutral|ambiguous","escalation_intensity":1-5}
 
 Valid actor IDs: iran, usa, gcc. Valid theatre IDs: gulf_waters, red_sea.
-Return ONLY the JSON array. No preamble. No markdown fences. Omit any event without a verifiable source_url.`;
+Return ONLY the JSON array. No preamble. No markdown fences. Omit any event without a verifiable source_url.`,
+  pak_afg_2025: `You are an intelligence extraction agent. Extract structured event data from recent news about Pakistan–Afghanistan tensions, TTP (Tehrik-i-Taliban Pakistan) cross-border activity, and Durand Line dynamics.
+
+For each distinct event from the last 24-48 hours, return a JSON array with exactly these fields:
+{"reported_at":"ISO 8601","occurred_at":"ISO or null","time_precision":"exact|approximate|date_only|unknown","title":"one line max 80 chars","description":"2-4 sentences factual","theatres":["border_region","pakistan_tribal","afghanistan_interior"],"actors":[{"id":"pakistan","role":"attacker","side":"state"}],"source_name":"publication","source_url":"full URL required","source_type":"wire|analysis|state_media|social|official","confidence":"high|medium|low","escalation_direction":"escalatory|de-escalatory|neutral|ambiguous","escalation_intensity":1-5}
+
+Valid actor IDs: pakistan, afghanistan, ttp, china. Valid theatre IDs: border_region, pakistan_tribal, afghanistan_interior.
+Return ONLY the JSON array. No preamble. No markdown fences. Omit any event without a verifiable source_url.`,
+};
+
+async function run() {
+  const prompt = PROMPTS[CONFLICT_ID] || PROMPTS.hormuz_2026;
 
   const rawContent = await callPerplexity(prompt);
   const rawPayload = rawContent ? { raw: rawContent, prompt } : null;

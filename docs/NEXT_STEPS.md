@@ -14,9 +14,9 @@ Options and Thresholds tabs added. Analysts can manually correct option status a
 
 Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). For reference, env vars used: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `ADMIN_API_KEY`, `CONFLICT_ID`, `VITE_CONFLICT_ID`. Optional for ingestion: `PERPLEXITY_API_KEY`, `ANTHROPIC_API_KEY`, `RAPIDAPI_KEY`, `TWITTER_API_MODE`.
 
-### 3. Multi-conflict (no code)
+### 3. ~~Multi-conflict~~ (done)
 
-Zero code changes required. The 8-step guide is in `CONFLICT_INTELLIGENCE_README.md`. Add a new conflict by inserting rows into `config_*` tables with a new `conflict_id` and setting `CONFLICT_ID` env var.
+Second conflict `pak_afg_2025` (Pakistan/Afghanistan Taliban) seeded. Migration: `supabase/migrations/004_seed_pak_afg.sql`. To switch: set `CONFLICT_ID` and `VITE_CONFLICT_ID` to `pak_afg_2025` in Netlify, redeploy. See `docs/NETLIFY_ENV.md` for details.
 
 ---
 

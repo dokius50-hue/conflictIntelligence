@@ -34,6 +34,21 @@ Use this checklist when deploying to Netlify. Set in Site settings → Environme
 | `RAPIDAPI_KEY` | Twitter via RapidAPI | **Yes** |
 | `TWITTER_BEARER_TOKEN` | Twitter v2 direct | **Yes** |
 
+## Switching conflicts
+
+Two conflicts are seeded: `hormuz_2026` (default), `pak_afg_2025` (Pakistan/Afghanistan Taliban).
+
+To switch the live app to Pakistan/Afghanistan:
+
+| Variable | Value |
+|----------|-------|
+| `CONFLICT_ID` | `pak_afg_2025` |
+| `VITE_CONFLICT_ID` | `pak_afg_2025` |
+
+Redeploy after changing `VITE_CONFLICT_ID` (build-time variable).
+
+For GitHub Actions ingestion, set repo variable `CONFLICT_ID` to `pak_afg_2025` to ingest for that conflict.
+
 ## Notes
 
 - Redeploy after adding or changing `VITE_*` vars — they are baked in at build time.
