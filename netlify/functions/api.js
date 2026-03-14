@@ -18,6 +18,8 @@ const routes = {
   '/api/validate-config':   require('../../api/validate-config'),
   '/api/config-actors':     require('../../api/config-actors'),
   '/api/config-theatres':   require('../../api/config-theatres'),
+  '/api/config-options':    require('../../api/config-options'),
+  '/api/config-threshold-conditions': require('../../api/config-threshold-conditions'),
   '/api/tweets-pending':    require('../../api/tweets-pending'),
   '/api/tweet-disposition': require('../../api/tweet-disposition'),
   '/api/events':            require('../../api/events'),

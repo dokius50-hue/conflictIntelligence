@@ -12,6 +12,8 @@ const queueReject = require('./api/queue-reject');
 const validateConfig = require('./api/validate-config');
 const configActors = require('./api/config-actors');
 const configTheatres = require('./api/config-theatres');
+const configOptions = require('./api/config-options');
+const configThresholdConditions = require('./api/config-threshold-conditions');
 const tweetsPending = require('./api/tweets-pending');
 const tweetDisposition = require('./api/tweet-disposition');
 const events = require('./api/events');
@@ -30,6 +32,8 @@ const routes = {
   '/api/validate-config': validateConfig,
   '/api/config-actors': configActors,
   '/api/config-theatres': configTheatres,
+  '/api/config-options': configOptions,
+  '/api/config-threshold-conditions': configThresholdConditions,
   '/api/tweets-pending': tweetsPending,
   '/api/tweet-disposition': tweetDisposition,
   '/api/events': events,
@@ -49,6 +53,8 @@ const ADMIN_ROUTES = new Set([
   '/api/validate-config',
   '/api/config-actors',
   '/api/config-theatres',
+  '/api/config-options',
+  '/api/config-threshold-conditions',
   '/api/tweets-pending',
   '/api/tweet-disposition',
 ]);
