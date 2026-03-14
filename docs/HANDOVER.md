@@ -68,7 +68,7 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 
 See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 
-1. **Config Editor expansion** — Add Options and Thresholds tabs so analysts can manually mark options as executed/degraded and threshold conditions as met. Plan in `.cursor/plans/config_editor_expansion_a2770464.plan.md`.
+1. ~~**Config Editor expansion**~~ — Done. Options and Thresholds tabs in Admin → Config.
 2. **Connect to Netlify** — Code is ready. Import from Git at app.netlify.com, set env vars, deploy.
 3. **Multi-conflict** — Zero code. Guide in `CONFLICT_INTELLIGENCE_README.md`.
 
