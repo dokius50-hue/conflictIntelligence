@@ -93,7 +93,7 @@ function AgentFindings({ row }) {
 
   const findings = Array.isArray(row.key_findings) && row.key_findings.length > 0 ? row.key_findings : null;
   const hasConfidence = row.confidence_reasoning || (row.corroboration_status && row.corroboration_status !== 'unknown');
-  const hasTrace = row.agent_trace != null;
+  const hasTrace = row.agent_trace != null && Object.keys(row.agent_trace).length > 0;
 
   if (!findings && !hasConfidence && !hasTrace) return null;
 
