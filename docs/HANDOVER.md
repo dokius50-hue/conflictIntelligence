@@ -6,7 +6,7 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 
 ## Where we are — March 2026
 
-**The full build sequence (Stages 1–7 / A1–A3 / B1–B7) is complete.** The app is a functional conflict intelligence platform with real data, all views browser-tested.
+**The full build sequence (Stages 1–7 / A1–A3 / B1–B7) is complete.** Phase 3 agent pipeline (Steps 1–3) is done. The app is a functional conflict intelligence platform with real data, all views browser-tested, and an AI agent pipeline for ingestion and tagging.
 
 ### Completed stages
 
@@ -24,6 +24,10 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
   - **B5 Scenario Falsification Tracker** — viable/falsified split, survival condition checklist, falsification reason box on violated scenarios.
   - **B6 Analyst Perspectives Panel** — theatre filter (All/Gulf/Red Sea), osint/analyst type badges, tweet cards with source links.
   - **B7 Market Panel** — Recharts line charts, 4 indicators (Brent Crude, Suezmax tanker rate, war risk insurance, EU gas) with 4 time-series snapshots from baseline (Mar 1) to current (Mar 12).
+- **Phase 3 — Agent Pipeline (Steps 1–3 complete):**
+  - **Step 1: Schema migration** — `key_findings`, `confidence_reasoning`, `corroboration_status` on queue tables.
+  - **Step 2: Ingestion agents** — Config-driven theatre-searcher → deduplicator → enricher → insert. Run: `npm run ingest:agent`.
+  - **Step 3: Tagging agents** — 3-agent swarm (option-analyst, threshold-analyst, cross-theatre) + deterministic synthesis. Triggered on demand via "Suggest Tags (AI)" button in Edit & Approve modal. API: `GET /api/suggest-tags`.
 
 ### Supabase data state
 
@@ -45,18 +49,6 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 | market_snapshots | 4 (Mar 1, 5, 10, 12) |
 | market_snapshot_values | 16 |
 
-### Recently completed (March 2026)
-
-- **Phase 3 Step 1: Schema migration (`005_agent_schema.sql`)** — Added `key_findings` (JSONB), `confidence_reasoning` (TEXT), `corroboration_status` (TEXT + CHECK constraint) to `events_queue` and `tweets_queue`. Existing rows backfilled with safe defaults. All existing scripts, API endpoints, and admin UI verified compatible. Applied via Supabase MCP `apply_migration`.
-- **Phase 3 Step 2: Ingestion agents** — Full agent pipeline implemented. `agents/lib/llm.js` (shared LLM caller with retry + failure tracking), `agents/ingestion/` (validators, theatre-searcher, deduplicator, enricher, orchestrator). `lib/db/queue.js` extended with `getRecentQueueEvents` and `insertQueueEvent`. `zod` added to dependencies. Config-driven prompts replace hardcoded per-conflict prompts. Dedup checks both queue and published events. Enricher has bounded concurrency (3). `--dry-run`, `--conflict-id`, `--dedup-hours` flags. Bug fix: `sanitizeEventRecord` was stripping `key_findings` and `confidence_reasoning` — theatre-searcher now carries them forward from raw output.
-- **Phase 3 Step 3: Tagging agents** — 3-agent swarm: `agents/tagging/` (option-analyst, threshold-analyst, cross-theatre, synthesis, orchestrator). API endpoint `api/suggest-tags.js`. Wired into `server.js`, Netlify function, and AdminQueue Edit & Approve modal ("Suggest Tags (AI)" button). 3 parallel Claude calls per invocation. Synthesis is deterministic (no LLM). Strips hallucinated IDs, removes contradictions (an option can't be executed AND foreclosed). Old `scripts/lib/suggest-tags.js` preserved as fallback.
-- **Ingestion fixes** — Perplexity endpoint corrected to `https://api.perplexity.ai/chat/completions`; Twitter `sinceId` forwarded as `since_id` to RapidAPI; debug `console.log` removed.
-- **Option/threshold status auto-updates** — Approving an event in the queue now updates `config_options.status` and `config_threshold_conditions.status`; if all conditions for a threshold are satisfied, `config_thresholds.status` is set to `crossed`. Rollback on failure (deletes the published event).
-- **Causal chain view** — Click an event on the Timeline page → panel shows option changes, threshold progress, scenarios at risk. API: `GET /api/causal-chain?event_id=`. New: `CausalChainPanel`, `TimelinePage`, `useCausalChain` hook.
-- **Production deploy (Netlify)** — `netlify.toml`, `netlify/functions/api.js` (Express + serverless-http wrapping all 16 api handlers). Admin auth guards added to all 8 admin handlers for serverless (no central `server.js` middleware on Netlify). Vercel removed.
-- **Multi-conflict UI (Option A)** — Implemented URL param-based conflict switching (`?conflict_id=`). Conflict dropdown in header when 2+ conflicts; `navTo()` preserves param in links. API: `GET /api/conflicts` returns active conflicts from `config_conflicts`. All hooks (`useConfig`, `useEvents`, `useOptions`, etc.) use `useConflict()` and refetch when `conflictId` changes. Admin pages (Queue, TweetQueue, ConfigEditor) pass `conflict_id` to APIs.
-- **Resilience fix (done):** `ConflictProvider` moved inside Routes via layout route (`ConflictLayout` with `Outlet`). Defensive `conflictId ?? DEFAULT_CONFLICT` added in Layout, ConfigEditor, Home. See `docs/plans/fix_multi_conflict_resilience.md`.
-
 ---
 
 ## How to run
@@ -64,7 +56,12 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 1. **Env** — `.env` must have `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`. Optional: `CONFLICT_ID`, `PERPLEXITY_API_KEY`, `ANTHROPIC_API_KEY`. Admin protection: `ADMIN_API_KEY` + `VITE_ADMIN_API_KEY` (same value — if unset, all admin routes are open). Twitter: `TWITTER_API_MODE=rapidapi`, `RAPIDAPI_KEY`.
 2. **Dev servers** — Two terminals: `npm run dev:api` (API on :3001), `npm run dev` (Vite on :5173). Or one: `npm run dev:all`. Frontend proxies `/api` to :3001.
    > ⚠️ **`server.js` is a persistent Node process** — it does NOT restart automatically after terminal sessions end or after changes to `api/` or `lib/` files. Always restart it manually: `pkill -f "node server.js" && npm run dev:api`. If you see "Failed to fetch" errors in the browser, the API server has died.
-3. **Ingestion** — `npm run ingest:perplexity` → `events_queue`; `npm run ingest:twitter` → `tweets_queue`.
+3. **Ingestion** — Three modes:
+   - `npm run ingest:perplexity` → `events_queue` (old script, hardcoded prompts per conflict)
+   - `npm run ingest:twitter` → `tweets_queue`
+   - `npm run ingest:agent` → `events_queue` (agent pipeline, config-driven prompts, dedup + enrichment)
+     - Flags: `--dry-run`, `--conflict-id=X`, `--dedup-hours=N`
+     - Dry run recommended first: `npm run ingest:agent -- --dry-run`
 4. **App** — http://localhost:5173. Nav: Timeline | Map | Options | Thresholds | Scenarios | Perspectives | Market | (admin) Event Queue | Tweet Queue | Config.
 
 ---
@@ -76,13 +73,14 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 1. ~~**Config Editor expansion**~~ — Done.
 2. ~~**Connect to Netlify**~~ — Done.
 3. ~~**Multi-conflict resilience fix**~~ — Done.
-4. **Phase 3 agents** — Current priority. Pipeline: reduce → structure → link → surface changes.
-   - ~~**Step 1:** Schema migration (`005_agent_schema.sql`)~~ — Done. `key_findings`, `confidence_reasoning`, `corroboration_status` added to `events_queue` and `tweets_queue`. CHECK constraint on `corroboration_status`. Applied via Supabase MCP, local file at `supabase/migrations/005_agent_schema.sql`.
-   - ~~**Step 2:** Ingestion agents~~ — Done. `npm run ingest:agent` (or `--dry-run --conflict-id=X --dedup-hours=N`). Pipeline: theatre-searcher (Perplexity, parallel per theatre, config-driven prompts) → deduplicator (1 batched Claude call vs queue+published) → enricher (Perplexity corroboration, concurrency capped at 3) → insert with `agent_trace`. Shared LLM caller with retry. Zod validation at every stage boundary. Old `ingest-perplexity.js` preserved as fallback.
-   - ~~**Step 3:** Tagging agents~~ — Done. 3-agent swarm: option-analyst, threshold-analyst, cross-theatre + deterministic synthesis. API: `GET /api/suggest-tags?queue_id=&conflict_id=`. Triggered by "Suggest Tags (AI)" button in Edit & Approve modal. Auto-applies to tag selections. Strips hallucinated IDs, removes contradictions.
-   - **Step 4:** Delta view — "What changed since last review?"
+4. **Phase 3 agents** — Pipeline: reduce → structure → link → surface changes.
+   - ~~**Step 1:** Schema migration~~ — Done.
+   - ~~**Step 2:** Ingestion agents~~ — Done.
+   - ~~**Step 3:** Tagging agents~~ — Done.
+   - **Step 4:** Delta view — **NEXT TO IMPLEMENT.** "What changed since last review?" See `docs/NEXT_STEPS.md`.
    - **Step 5:** Gap detection — "What's absent?"
-   - **Design:** Direct `fetch` calls to Perplexity + Claude APIs. Custom orchestrator pattern (agents are functions). Zod schemas for deterministic validation. Conservative defaults. Human approves everything. `agent_trace` on every queue row.
+5. **Agent trace in admin UI** — The `agent_trace` JSONB is being populated on every queue row but not yet surfaced in the UI. An expandable "Show agent trace" in the AdminQueue Edit modal would let analysts understand pipeline decisions. Relatively simple.
+6. **Add `npm run ingest:agent` to GitHub Actions** — The workflow (`.github/workflows/ingest.yml`) currently runs `ingest:perplexity` and `ingest:twitter`. Agent ingestion is ready; add it alongside or replace the old script. Needs `ANTHROPIC_API_KEY` repo secret.
 
 ---
 
@@ -91,32 +89,26 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 | Purpose | File |
 |---|---|
 | Schema source of truth | `supabase/migrations/001_initial.sql`, `002_seed_hormuz.sql`, `005_agent_schema.sql` |
-| API server (dev) | `server.js` |
+| API server (dev) | `server.js` (21 routes, 10 admin-auth-protected) |
 | Admin auth | `api/lib/adminAuth.js` |
-| Ingestion | `scripts/ingest-perplexity.js`, `scripts/ingest-twitter.js` |
+| Ingestion (old scripts) | `scripts/ingest-perplexity.js`, `scripts/ingest-twitter.js` |
+| Ingestion (agent pipeline) | `agents/ingestion/orchestrator.js`, `theatre-searcher.js`, `deduplicator.js`, `enricher.js`, `validators.js` |
+| Shared LLM caller | `agents/lib/llm.js` (retry, failure tracking, bounded concurrency) |
+| Tagging agent swarm | `agents/tagging/orchestrator.js`, `option-analyst.js`, `threshold-analyst.js`, `cross-theatre.js`, `synthesis.js` |
+| Tagging API endpoint | `api/suggest-tags.js` |
 | Twitter client | `scripts/lib/twitter-client.js` |
 | DB query tools | `lib/db/` (events, options, thresholds, scenarios, perspectives, config, queue, market) |
 | Reasoning functions | `lib/reasoning/` (options, thresholds, scenarios, causal-chain) |
-| API endpoints | `api/` (events, options, thresholds, scenarios, perspectives, market, config, queue-*, tweets-*, config-*, causal-chain, validate-config) |
+| API endpoints | `api/` (events, options, thresholds, scenarios, perspectives, market, config, queue-*, tweets-*, config-*, causal-chain, validate-config, review-assist, suggest-tags, conflicts) |
 | React hooks | `src/hooks/` (useEvents, useOptions, useThresholds, useScenarios, usePerspectives, useMarket, useConfig, useCausalChain) |
 | Pages | `src/pages/` (EventTimeline, TimelinePage, MapWithTimeline, SituationMap, OptionView, ThresholdView, ScenarioView, PerspectivesView, MarketView, Home) |
 | Admin pages | `src/admin/` (AdminQueue, TweetQueue, ConfigEditor) |
 | Components | `src/components/` (Layout, CausalChainPanel) |
 | Conflict context | `src/contexts/ConflictContext.jsx` |
-| Conflicts API | `api/conflicts.js` |
-| Resilience fix plan | `docs/plans/fix_multi_conflict_resilience.md` |
-| Netlify | `netlify.toml`, `netlify/functions/api.js` |
-| Review-assist agents | `agents/review-assist/` (orchestrator, context-builder, verifier, pattern-detector) |
-| Ingestion agent specs | `agents/ingestion/README.md` |
-| Ingestion agent pipeline | `agents/ingestion/orchestrator.js`, `theatre-searcher.js`, `deduplicator.js`, `enricher.js`, `validators.js` |
-| Shared LLM caller (retry + concurrency) | `agents/lib/llm.js` |
-| Tagging agent swarm | `agents/tagging/orchestrator.js`, `option-analyst.js`, `threshold-analyst.js`, `cross-theatre.js`, `synthesis.js` |
-| Tagging API endpoint | `api/suggest-tags.js` |
-| Tagging agent specs | `agents/tagging/README.md` |
-| Existing suggest-tags | `scripts/lib/suggest-tags.js` (Claude, ID validation — not yet wired into ingestors) |
-| Tagging context builder | `scripts/lib/build-tagging-context.js` |
-| Tagging prompt | `scripts/lib/tagging-prompts/v1.js` |
-| Next steps (Phase 3 plan) | `docs/NEXT_STEPS.md` |
+| Netlify | `netlify.toml`, `netlify/functions/api.js` (21 routes) |
+| Old suggest-tags (fallback) | `scripts/lib/suggest-tags.js`, `scripts/lib/build-tagging-context.js`, `scripts/lib/tagging-prompts/v1.js` |
+| Sanitize/validate | `scripts/lib/sanitize.js`, `scripts/lib/validate.js` |
+| Next steps | `docs/NEXT_STEPS.md` |
 | Architecture | `CONFLICT_INTELLIGENCE_README.md` |
 
 ---
@@ -134,21 +126,22 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 - **Admin auth:** `ADMIN_API_KEY` env var on server, `VITE_ADMIN_API_KEY` on client (same value). If unset, all admin routes are open (safe for local dev). Use `Authorization: Bearer <key>` or `x-admin-key` header. On Netlify, each admin handler must call `requireAdminAuth(req, res)` at the start (no central middleware).
 - **Conflict ID:** `hormuz_2026`. Primary via `VITE_CONFLICT_ID` env; URL param `?conflict_id=` overrides for multi-conflict. Resolution order: URL param → `VITE_CONFLICT_ID` → `hormuz_2026`.
 - **React Router v6:** `useSearchParams`, `useNavigate`, `useLocation` must be used inside a component rendered within `<Routes>`, not as parents of `Routes`. Use a layout route (`Route element={<LayoutWithProvider />}` with `<Outlet />`) so providers live inside the Routes tree.
-- **Future hybrid domains:** Same app can support single-domain (URL param) and subdomain-per-conflict (different `VITE_CONFLICT_ID` per deploy).
 - **Schema:** `events.queue_id` is a first-class column (not in metadata). `validate_config_references()` is a Postgres RPC — call after every config save and surface dangles as non-blocking inline warnings.
 - **Recharts peer deps:** Install with `--legacy-peer-deps` if React 18 conflicts arise (react-leaflet@4 also requires this).
 - **API server restarts:** `server.js` is a persistent Node process — must be restarted (`pkill -f "node server.js"`) after changes to `api/` files or `lib/` files. The Vite dev server hot-reloads automatically.
 - **Supabase MCP for seeding:** Use `execute_sql` via MCP for bulk inserts and schema checks. Always verify column names before inserting — several tables lack columns you'd expect (`is_active` on theatres, `conflict_id` on threshold/scenario conditions).
-- **Netlify:** Single Express app in `netlify/functions/api.js` wraps all 16 `api/*.js` handlers via `serverless-http`. No changes to handler files needed — they already use Express-style req/res. Admin auth must be enforced inside each admin handler (no central middleware on Netlify). `netlify.toml` defines build, publish dir, function dir, and redirects (API → function, SPA fallback).
+- **Netlify:** Single Express app in `netlify/functions/api.js` wraps all 21 `api/*.js` handlers via `serverless-http`. No changes to handler files needed — they already use Express-style req/res. Admin auth must be enforced inside each admin handler (no central middleware on Netlify). `netlify.toml` defines build, publish dir, function dir, and redirects (API → function, SPA fallback).
 - **Config status propagation:** When approving an event, `queue-approve.js` now updates `config_options.status` and `config_threshold_conditions.status`. If all conditions for a threshold become satisfied, `config_thresholds.status = 'crossed'`. On any post-insert failure, the published event is deleted so the queue item stays pending.
-- **Phase 3 agent design (March 2026):** Pipeline is "reduce → structure → link → surface changes." Agents are narrow functions (one question each), not services. Every agent output passes through a deterministic validator. Conservative defaults: uncertain → do less. Content classified per item, not per source (same account can post breaking news and analysis). `key_findings` with attribution replaces flat descriptions. `corroboration_status` set by enricher, not extraction. Dedup is conservative: prefer duplicates over incorrect merges. Tagging is on-demand (when admin opens queue item), not during ingestion. Perplexity Sonar for search/extraction, Claude for reasoning/tagging. `agent_trace` JSONB on every queue row for observability.
-- **`suggest-tags.js` exists but is not wired:** `scripts/lib/suggest-tags.js` calls Claude and validates IDs, but neither ingestor calls it. `ai_suggested_tags` is usually empty in the queue. Phase 3 tagging agents will replace this with a multi-agent swarm (option-analyst, threshold-analyst, cross-theatre, synthesis).
-- **Queue tables have agent fields:** `processing_mode` (default `'script'`), `agent_run_id`, `agent_trace` (JSONB) already exist on `events_queue` and `tweets_queue`. Phase 3 adds: `key_findings`, `confidence_reasoning`, `corroboration_status` via migration `005_agent_schema.sql`.
-- **Vercel AI SDK is ESM-only:** The `ai` npm package uses `import` syntax and cannot be `require()`'d in a CommonJS project (`"type": "commonjs"` in package.json). Workarounds (.mjs files, dynamic import()) add friction. Decision: use direct `fetch` calls to Perplexity/Claude APIs (matching existing `ingest-perplexity.js` and `suggest-tags.js` patterns) + Zod for schema validation. This gives structured output validation without CJS/ESM friction.
-- **Dedup strategy:** Claude judges similarity in ONE batched call (all candidates + recent queue items). Conservative: uncertain = keep both. Prefer duplicates over missed events. Agent_trace records reasoning.
-- **Enricher strategy:** One Perplexity Sonar call per candidate to find corroborating URLs from different publications. Sets `corroboration_status` to `single_source` / `multi_corroborating` / `multi_divergent`. Failure = `unknown`.
-- **Theatre-searcher prompts are config-driven:** Unlike hardcoded prompts in `ingest-perplexity.js`, agent prompts are built dynamically from `config_theatres`, `config_actors`, `config_locations`. Adding a new conflict or theatre automatically generates correct prompts.
+- **Vercel AI SDK is ESM-only:** The `ai` npm package uses `import` syntax and cannot be `require()`'d in a CommonJS project (`"type": "commonjs"` in package.json). Decision: use direct `fetch` calls to Perplexity/Claude APIs + Zod for schema validation. This gives structured output validation without CJS/ESM friction.
+- **Phase 3 agent design:** Pipeline is "reduce → structure → link → surface changes." Agents are narrow functions (one question each), not services. Every agent output passes through a deterministic validator. Conservative defaults: uncertain → do less. `agent_trace` JSONB on every queue row for observability.
+- **`sanitizeEventRecord` strips unknown fields:** The function in `scripts/lib/sanitize.js` returns a fixed set of core event fields. Agent-specific fields (`key_findings`, `confidence_reasoning`) must be carried forward separately after sanitization. The theatre-searcher does this explicitly. If future fields are added to the agent schema, update the theatre-searcher's carry-forward code.
+- **Zod schemas must match sanitize output types:** `sanitizeEventRecord` returns `null` for dates when input is invalid (not `undefined`). Zod schemas must use `.nullable()` for any field that could be null from sanitize. `source_url` is required in the Zod schema (not optional with a bad default) because the legacy validator already rejects records without URLs before Zod runs.
+- **Ingestion pipeline: old vs agent:** `scripts/ingest-perplexity.js` has hardcoded prompts per `CONFLICT_ID` (only `hormuz_2026` and `pak_afg_2025`). The agent pipeline (`agents/ingestion/`) builds prompts from config — any conflict with theatres/actors/locations in Supabase works automatically. Both coexist; old script is fallback.
+- **Dedup strategy:** Claude judges similarity in ONE batched call (all candidates + recent queue + published items). Conservative: uncertain = keep both. Prefer duplicates over missed events. Dedup window configurable via `--dedup-hours` (default 48h; increase for slow-moving conflicts).
+- **Enricher strategy:** One Perplexity Sonar call per candidate to find corroborating URLs. Bounded concurrency (3 simultaneous calls). Sets `corroboration_status`. Failure = `unknown`.
+- **Tagging swarm design:** 3 specialised agents (option-analyst, threshold-analyst, cross-theatre) run in parallel, then a deterministic synthesis step merges and validates. Sub-agents are pure: they receive pre-assembled context, return structured tags. No DB calls in agents — orchestrator loads all context from `lib/db/`. Synthesis strips hallucinated IDs (only config-valid IDs pass), removes contradictions (option can't be executed AND foreclosed), and combines reasoning from all agents.
+- **Tagging is on-demand, not automatic:** Analyst clicks "Suggest Tags (AI)" in the Edit & Approve modal. This avoids unnecessary API costs and keeps the analyst in control. Results auto-populate tag selection fields but can be manually adjusted before approval.
 
 ---
 
-*Last updated: March 2026 — Phase 3 Steps 1–3 complete. Step 1: schema migration. Step 2: ingestion agent pipeline. Step 3: tagging agent swarm (3 agents + synthesis). Framework: direct fetch + Zod. Next: Step 4 (delta view). See docs/NEXT_STEPS.md for full architecture.*
+*Last updated: March 15, 2026 — Phase 3 Steps 1–3 complete. Step 1: schema migration. Step 2: ingestion agent pipeline (theatre-searcher, deduplicator, enricher). Step 3: tagging agent swarm (option-analyst, threshold-analyst, cross-theatre, synthesis). Framework: direct fetch + Zod, CJS. All 11 pages verified clean (0 console errors). Next: Step 4 (delta view) or agent trace UI. See docs/NEXT_STEPS.md.*

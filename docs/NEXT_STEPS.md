@@ -20,22 +20,24 @@ Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). For refe
 
 ---
 
-## Phase 3 — Agent Pipeline (current priority)
+## Phase 3 — Agent Pipeline (Steps 1–3 complete)
 
 **Goal:** Help a seasoned analyst keep up with complex, fast-moving situations. Reduce cognitive overload. Pipeline: **reduce → structure → link → surface changes.**
 
 **Design decisions (March 2026):**
 
 - **No Vercel AI SDK** — ESM-only, incompatible with CJS project. Use direct `fetch` to Perplexity/Claude APIs (same pattern as `ingest-perplexity.js` and `suggest-tags.js`).
-- **Zod** for schema validation of all agent outputs (`npm install zod`).
-- LLMs: Perplexity Sonar for search/extraction, Claude for reasoning/dedup.
-- Tagging: on demand (when admin opens queue item), not during ingestion.
+- **Zod** for schema validation of all agent outputs (`npm install zod` — already installed).
+- LLMs: Perplexity Sonar for search/extraction, Claude for reasoning/dedup/tagging.
+- Tagging: on demand (when admin clicks "Suggest Tags (AI)" in Edit & Approve modal), not during ingestion.
 - Schema changes via migration file (`005_agent_schema.sql`) — done.
-- Agents are narrow functions, not services. Orchestrator calls them in sequence.
+- Agents are narrow functions, not services. Orchestrator calls them in sequence or parallel.
 - Every agent output passes through a deterministic Zod validator before entering the pipeline.
 - Conservative defaults: uncertain → do less, not more. Empty tags > wrong tags.
 - Human stays in the loop: agents fill the queue, humans approve.
 - `agent_trace` (JSONB) on every queue row for observability.
+- Shared LLM caller (`agents/lib/llm.js`) with single retry on 429/5xx and failure counter tracking.
+- Bounded concurrency (`withConcurrency`) for parallel API calls to avoid rate limits.
 
 ### Implementation order
 
@@ -63,7 +65,7 @@ orchestrator.js (npm run ingest:agent)
   │   ├─ Config-driven prompt (theatre label, location names, valid actor IDs)
   │   ├─ Call Perplexity Sonar → raw JSON events
   │   ├─ Parse (reuse scripts/lib/sanitize.js), validate (scripts/lib/validate.js + Zod)
-  │   ├─ Extract key_findings + confidence_reasoning per event
+  │   ├─ Carry forward key_findings + confidence_reasoning from raw LLM output
   │   └─ Return candidates[] with agent_trace.search
   ├─ 4. DEDUPLICATOR (1 batched Claude call)
   │   ├─ Load recent queue + published events (configurable window, default 48h)
@@ -81,31 +83,11 @@ orchestrator.js (npm run ingest:agent)
       └─ Reuse existing sanitize/validate helpers
 ```
 
-**Files created:**
+**Files:** `agents/lib/llm.js`, `agents/ingestion/` (orchestrator, theatre-searcher, deduplicator, enricher, validators). Modified: `lib/db/queue.js` (added `getRecentQueueEvents`, `insertQueueEvent`), `package.json` (zod, ingest:agent script).
 
-- `agents/lib/llm.js` — Shared LLM caller. `callPerplexity(prompt)` and `callClaude(prompt)` via direct `fetch`. `callClaudeJSON(prompt, zodSchema)` parses + validates. Single retry on 429/5xx with failure counter tracking. `withConcurrency(items, fn, limit)` for bounded parallelism.
-- `agents/ingestion/validators.js` — Zod schemas: `candidateEventSchema`, `dedupResultSchema`, `enrichmentResultSchema`. `validateCandidates(raw)` returns `{ valid[], rejected[] }`.
-- `agents/ingestion/theatre-searcher.js` — `searchTheatre(theatre, actors, locations, conflictId)`. Config-driven prompts. Reuses `parseRawEventArray`, `sanitizeEventRecord`. Two-stage validation (legacy + Zod). Returns `{ candidates, rejected, trace }`.
-- `agents/ingestion/deduplicator.js` — `deduplicateCandidates(candidates, recentQueue, recentPublished)`. ONE batched Claude call. Checks both queue and published events (published = higher trust). Conservative: validation failure = treat all as new.
-- `agents/ingestion/enricher.js` — `enrichCandidates(candidates)`. Bounded concurrency (3). One Perplexity call per non-duplicate candidate. Failure per candidate → `corroboration_status: 'unknown'`.
-- `agents/ingestion/orchestrator.js` — Entry point. `--dry-run`, `--conflict-id=X`, `--dedup-hours=N`. Logs trace to `logs/raw/`. Reports API failure counters.
+**Cost per run (hormuz_2026, 2 theatres):** ~2 Perplexity (search) + 1 Claude (dedup) + 3–8 Perplexity (enrichment) = **6–11 API calls total**.
 
-**Files modified:**
-
-- `lib/db/queue.js` — Added `getRecentQueueEvents(conflictId, hours, limit)` and `insertQueueEvent(row)` to centralise DB access.
-- `package.json` — Added `zod` dependency, `"ingest:agent"` script.
-
-**Design decisions:**
-
-- Enricher concurrency capped at 3 to avoid Perplexity rate limits with large batches.
-- Dedup compares against both queue and published events (published items = confirmed, higher-trust comparisons).
-- Dedup window configurable via `--dedup-hours` flag (default 48h; increase for slow-moving conflicts).
-- Single retry with backoff on transient API errors (429/5xx). Consecutive failure counter logged so operators know when an API is down.
-- `insertQueueEvent` centralised in `lib/db/queue.js` — future column changes only need one update.
-- `auto_approve_eligible` preserved using existing `getAutoApproveEligible` from `scripts/lib/validate.js`.
-- Old `ingest-perplexity.js` preserved as fallback. Note: its prompts are hardcoded per conflict_id; the agent pipeline's config-driven prompts supersede this.
-
-**Cost per run (hormuz_2026, 2 theatres):** ~2 Perplexity (search) + 1 Claude (dedup) + N Perplexity (enrichment, ~3–8) = **6–11 API calls total**.
+**Known issue fixed:** `sanitizeEventRecord()` strips unknown fields. Theatre-searcher explicitly carries forward `key_findings` and `confidence_reasoning` from raw LLM output after sanitization. If new agent fields are added to the schema, update the carry-forward code in `theatre-searcher.js`.
 
 #### ~~Step 3: Tagging agents (on demand)~~ (done)
 
@@ -122,25 +104,35 @@ Replaced `scripts/lib/suggest-tags.js` with a 3-agent tagging swarm called on de
 
 **Cost:** 3 Claude calls per invocation (parallel). No Perplexity calls for tagging.
 
-**Files created:**
+**Files:** `agents/tagging/` (orchestrator, option-analyst, threshold-analyst, cross-theatre, synthesis), `api/suggest-tags.js`. Modified: `server.js`, `netlify/functions/api.js`, `src/admin/AdminQueue.jsx`.
 
-- `agents/tagging/option-analyst.js`, `threshold-analyst.js`, `cross-theatre.js`, `synthesis.js`
-- `agents/tagging/orchestrator.js` — Loads all context from `lib/db/`, runs 3 agents in parallel, synthesises
-- `api/suggest-tags.js` — `GET /api/suggest-tags?queue_id=&conflict_id=` (admin auth required)
+---
 
-**Files modified:**
+## What's next — Priority order
 
-- `server.js` — Added `/api/suggest-tags` route and admin auth
-- `netlify/functions/api.js` — Added `/api/suggest-tags` route
-- `src/admin/AdminQueue.jsx` — "Suggest Tags (AI)" button, loading state, auto-apply to tag selections, reasoning/flags display
-
-#### Step 4: Delta view (future)
+### Step 4: Delta view (future)
 
 "What changed since last review?" Uses existing situation model (options, thresholds, scenarios). Surfaces new events, option/threshold movements, scenario impact since a timestamp.
 
-#### Step 5: Gap detection (future)
+**Approach ideas:**
+- Store last review timestamp per conflict (or per analyst)
+- Query events, option changes, threshold changes since timestamp
+- Summarise: "3 new events, 1 option executed, Hormuz closure threshold at 70% (was 50%)"
+- Could be a dedicated page or a panel on the Home page
+
+### Step 5: Gap detection (future)
 
 "What's absent?" Surface expected-but-missing signals (theatre went quiet, no response to provocation). Requires baseline cadence data built over time.
+
+### Agent trace in admin UI
+
+The `agent_trace` JSONB is populated on every queue row from the agent pipeline but not yet visible in the admin UI. Adding an expandable "Show agent trace" section in the Edit & Approve modal would let analysts see why the pipeline made its decisions. Relatively simple — just render the JSON in a collapsible section similar to the existing "Show raw input" toggle.
+
+### Add agent ingestion to GitHub Actions
+
+The workflow (`.github/workflows/ingest.yml`) currently runs `npm run ingest:perplexity` and `npm run ingest:twitter` daily at 12:00 UTC. Agent ingestion is ready to add — either alongside or replacing the old script. Needs `ANTHROPIC_API_KEY` added as repo secret. Update workflow to include `npm run ingest:agent -- --conflict-id=hormuz_2026`.
+
+---
 
 ### Design principles
 
@@ -166,4 +158,4 @@ Replaced `scripts/lib/suggest-tags.js` with a 3-agent tagging swarm called on de
 
 GitHub Actions runs `npm run ingest:perplexity` and `npm run ingest:twitter` daily at 12:00 UTC. Add repo secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PERPLEXITY_API_KEY`, `RAPIDAPI_KEY`. Optional repo variable: `CONFLICT_ID` (defaults to `hormuz_2026` if unset). Workflow: `.github/workflows/ingest.yml`. Manual trigger: Actions → Ingest → Run workflow.
 
-Once agent ingestion is ready, add `npm run ingest:agent` to the workflow (alongside or replacing script ingestion).
+**Agent ingestion is ready to add.** To enable: add `ANTHROPIC_API_KEY` repo secret, add step `npm run ingest:agent -- --conflict-id=hormuz_2026` to the workflow. Can run alongside or replace `ingest:perplexity`. Recommend running both in parallel initially to compare output quality.
