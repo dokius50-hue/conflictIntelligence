@@ -75,6 +75,78 @@ function AITags({ tags }) {
   );
 }
 
+const CORROBORATION_STYLES = {
+  multi_corroborating: 'bg-green-100 text-green-800',
+  multi_divergent: 'bg-yellow-100 text-yellow-800',
+  single_source: 'bg-slate-100 text-slate-600',
+  unknown: 'bg-slate-100 text-slate-500',
+};
+
+const FINDING_TYPE_STYLES = {
+  breaking: 'bg-red-100 text-red-700',
+  analysis: 'bg-sky-100 text-sky-700',
+  background: 'bg-slate-100 text-slate-600',
+};
+
+function AgentFindings({ row }) {
+  const [showTrace, setShowTrace] = useState(false);
+
+  const findings = Array.isArray(row.key_findings) && row.key_findings.length > 0 ? row.key_findings : null;
+  const hasConfidence = row.confidence_reasoning || (row.corroboration_status && row.corroboration_status !== 'unknown');
+  const hasTrace = row.agent_trace != null;
+
+  if (!findings && !hasConfidence && !hasTrace) return null;
+
+  return (
+    <div className="mt-3 rounded border border-indigo-100 bg-indigo-50/60 p-3 text-xs space-y-2">
+      {findings && (
+        <div>
+          <p className="font-medium text-indigo-800 mb-1">Key findings</p>
+          <ul className="space-y-1">
+            {findings.map((f, i) => (
+              <li key={i} className="flex flex-wrap items-start gap-1.5">
+                <span className={`shrink-0 rounded px-1.5 py-0.5 font-medium ${FINDING_TYPE_STYLES[f.type] ?? FINDING_TYPE_STYLES.background}`}>
+                  {f.type ?? 'note'}
+                </span>
+                <span className="text-slate-800">{f.finding}</span>
+                {f.attribution && <span className="text-slate-400">— {f.attribution}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {hasConfidence && (
+        <div className="flex flex-wrap items-center gap-2">
+          {row.corroboration_status && row.corroboration_status !== 'unknown' && (
+            <span className={`rounded px-1.5 py-0.5 font-medium ${CORROBORATION_STYLES[row.corroboration_status] ?? CORROBORATION_STYLES.unknown}`}>
+              {row.corroboration_status.replace(/_/g, ' ')}
+            </span>
+          )}
+          {row.confidence_reasoning && (
+            <span className="italic text-slate-600">{row.confidence_reasoning}</span>
+          )}
+        </div>
+      )}
+      {hasTrace && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowTrace((v) => !v)}
+            className="text-indigo-600 hover:underline"
+          >
+            {showTrace ? 'Hide agent trace' : 'Show agent trace'}
+          </button>
+          {showTrace && (
+            <pre className="mt-1 max-h-64 overflow-auto rounded border border-indigo-200 bg-white p-2 text-xs text-slate-700 whitespace-pre-wrap">
+              {JSON.stringify(row.agent_trace, null, 2)}
+            </pre>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function AdminQueue() {
   const { conflictId } = useConflict();
   const [pending, setPending] = useState([]);
@@ -293,6 +365,7 @@ function EditApproveModal({ row, config, conflictId, onClose, onApprove, onRejec
             )}
           </div>
         )}
+        <AgentFindings row={row} />
         <div className="mt-2">
           {!aiTags && !aiTagsLoading && (
             <button
