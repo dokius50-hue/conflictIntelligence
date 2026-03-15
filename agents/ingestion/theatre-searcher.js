@@ -102,8 +102,16 @@ async function searchTheatre(theatre, actors, locations, conflictId) {
   const rawArray = parseRawEventArray(rawContent);
   trace.parsed_count = rawArray.length;
 
+  // sanitizeEventRecord returns a fixed set of core fields and drops agent-specific
+  // fields (key_findings, confidence_reasoning). Carry them forward from the raw record.
   const sanitized = rawArray
-    .map((r) => sanitizeEventRecord(r))
+    .map((raw) => {
+      const core = sanitizeEventRecord(raw);
+      if (!core) return null;
+      core.key_findings = Array.isArray(raw.key_findings) ? raw.key_findings : [];
+      core.confidence_reasoning = typeof raw.confidence_reasoning === 'string' ? raw.confidence_reasoning : null;
+      return core;
+    })
     .filter(Boolean);
   trace.sanitized_count = sanitized.length;
 
@@ -112,8 +120,6 @@ async function searchTheatre(theatre, actors, locations, conflictId) {
   for (const rec of sanitized) {
     const { valid, errors } = validateEventRecord(rec);
     if (valid) {
-      rec.key_findings = rec.key_findings || [];
-      rec.confidence_reasoning = rec.confidence_reasoning || null;
       passedValidation.push(rec);
     } else {
       failedLegacy.push({ item: rec, errors });

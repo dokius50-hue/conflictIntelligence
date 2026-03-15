@@ -17,7 +17,7 @@ const actorRefSchema = z.object({
 });
 
 const candidateEventSchema = z.object({
-  reported_at: z.string().optional().default(''),
+  reported_at: z.string().nullable().optional().default(null),
   occurred_at: z.string().nullable().optional().default(null),
   time_precision: z.enum(['exact', 'approximate', 'date_only', 'unknown']).optional().default('unknown'),
   title: z.string().min(1).max(120),
@@ -25,7 +25,7 @@ const candidateEventSchema = z.object({
   theatres: z.array(z.string()).min(1),
   actors: z.array(actorRefSchema).optional().default([]),
   source_name: z.string().optional().default(''),
-  source_url: z.string().url().optional().default(''),
+  source_url: z.string().url({ message: 'source_url must be a valid URL' }),
   source_type: z.enum(['wire', 'analysis', 'state_media', 'social', 'official']).optional().default('social'),
   confidence: z.enum(['high', 'medium', 'low']).optional().default('medium'),
   escalation_direction: z.enum(['escalatory', 'de-escalatory', 'neutral', 'ambiguous']).nullable().optional().default(null),
