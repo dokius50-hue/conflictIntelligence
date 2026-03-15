@@ -48,7 +48,8 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 ### Recently completed (March 2026)
 
 - **Phase 3 Step 1: Schema migration (`005_agent_schema.sql`)** — Added `key_findings` (JSONB), `confidence_reasoning` (TEXT), `corroboration_status` (TEXT + CHECK constraint) to `events_queue` and `tweets_queue`. Existing rows backfilled with safe defaults. All existing scripts, API endpoints, and admin UI verified compatible. Applied via Supabase MCP `apply_migration`.
-- **Phase 3 Step 2: Ingestion agents** — Full agent pipeline implemented. `agents/lib/llm.js` (shared LLM caller with retry + failure tracking), `agents/ingestion/` (validators, theatre-searcher, deduplicator, enricher, orchestrator). `lib/db/queue.js` extended with `getRecentQueueEvents` and `insertQueueEvent`. `zod` added to dependencies. Config-driven prompts replace hardcoded per-conflict prompts. Dedup checks both queue and published events. Enricher has bounded concurrency (3). `--dry-run`, `--conflict-id`, `--dedup-hours` flags.
+- **Phase 3 Step 2: Ingestion agents** — Full agent pipeline implemented. `agents/lib/llm.js` (shared LLM caller with retry + failure tracking), `agents/ingestion/` (validators, theatre-searcher, deduplicator, enricher, orchestrator). `lib/db/queue.js` extended with `getRecentQueueEvents` and `insertQueueEvent`. `zod` added to dependencies. Config-driven prompts replace hardcoded per-conflict prompts. Dedup checks both queue and published events. Enricher has bounded concurrency (3). `--dry-run`, `--conflict-id`, `--dedup-hours` flags. Bug fix: `sanitizeEventRecord` was stripping `key_findings` and `confidence_reasoning` — theatre-searcher now carries them forward from raw output.
+- **Phase 3 Step 3: Tagging agents** — 3-agent swarm: `agents/tagging/` (option-analyst, threshold-analyst, cross-theatre, synthesis, orchestrator). API endpoint `api/suggest-tags.js`. Wired into `server.js`, Netlify function, and AdminQueue Edit & Approve modal ("Suggest Tags (AI)" button). 3 parallel Claude calls per invocation. Synthesis is deterministic (no LLM). Strips hallucinated IDs, removes contradictions (an option can't be executed AND foreclosed). Old `scripts/lib/suggest-tags.js` preserved as fallback.
 - **Ingestion fixes** — Perplexity endpoint corrected to `https://api.perplexity.ai/chat/completions`; Twitter `sinceId` forwarded as `since_id` to RapidAPI; debug `console.log` removed.
 - **Option/threshold status auto-updates** — Approving an event in the queue now updates `config_options.status` and `config_threshold_conditions.status`; if all conditions for a threshold are satisfied, `config_thresholds.status` is set to `crossed`. Rollback on failure (deletes the published event).
 - **Causal chain view** — Click an event on the Timeline page → panel shows option changes, threshold progress, scenarios at risk. API: `GET /api/causal-chain?event_id=`. New: `CausalChainPanel`, `TimelinePage`, `useCausalChain` hook.
@@ -78,7 +79,7 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 4. **Phase 3 agents** — Current priority. Pipeline: reduce → structure → link → surface changes.
    - ~~**Step 1:** Schema migration (`005_agent_schema.sql`)~~ — Done. `key_findings`, `confidence_reasoning`, `corroboration_status` added to `events_queue` and `tweets_queue`. CHECK constraint on `corroboration_status`. Applied via Supabase MCP, local file at `supabase/migrations/005_agent_schema.sql`.
    - ~~**Step 2:** Ingestion agents~~ — Done. `npm run ingest:agent` (or `--dry-run --conflict-id=X --dedup-hours=N`). Pipeline: theatre-searcher (Perplexity, parallel per theatre, config-driven prompts) → deduplicator (1 batched Claude call vs queue+published) → enricher (Perplexity corroboration, concurrency capped at 3) → insert with `agent_trace`. Shared LLM caller with retry. Zod validation at every stage boundary. Old `ingest-perplexity.js` preserved as fallback.
-   - **Step 3:** Tagging agents (on demand) — Option-analyst, threshold-analyst, cross-theatre, synthesis. Orchestrator in `agents/tagging/`. Trigger: explicit "Suggest Tags" button in Edit & Approve modal.
+   - ~~**Step 3:** Tagging agents~~ — Done. 3-agent swarm: option-analyst, threshold-analyst, cross-theatre + deterministic synthesis. API: `GET /api/suggest-tags?queue_id=&conflict_id=`. Triggered by "Suggest Tags (AI)" button in Edit & Approve modal. Auto-applies to tag selections. Strips hallucinated IDs, removes contradictions.
    - **Step 4:** Delta view — "What changed since last review?"
    - **Step 5:** Gap detection — "What's absent?"
    - **Design:** Direct `fetch` calls to Perplexity + Claude APIs. Custom orchestrator pattern (agents are functions). Zod schemas for deterministic validation. Conservative defaults. Human approves everything. `agent_trace` on every queue row.
@@ -109,6 +110,8 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 | Ingestion agent specs | `agents/ingestion/README.md` |
 | Ingestion agent pipeline | `agents/ingestion/orchestrator.js`, `theatre-searcher.js`, `deduplicator.js`, `enricher.js`, `validators.js` |
 | Shared LLM caller (retry + concurrency) | `agents/lib/llm.js` |
+| Tagging agent swarm | `agents/tagging/orchestrator.js`, `option-analyst.js`, `threshold-analyst.js`, `cross-theatre.js`, `synthesis.js` |
+| Tagging API endpoint | `api/suggest-tags.js` |
 | Tagging agent specs | `agents/tagging/README.md` |
 | Existing suggest-tags | `scripts/lib/suggest-tags.js` (Claude, ID validation — not yet wired into ingestors) |
 | Tagging context builder | `scripts/lib/build-tagging-context.js` |
@@ -148,4 +151,4 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 
 ---
 
-*Last updated: March 2026 — Phase 3 Steps 1–2 complete. Step 1: schema migration. Step 2: ingestion agent pipeline (theatre-searcher, deduplicator, enricher, orchestrator). Framework: direct fetch + Zod. Next: Step 3 (tagging agents). See docs/NEXT_STEPS.md for full architecture.*
+*Last updated: March 2026 — Phase 3 Steps 1–3 complete. Step 1: schema migration. Step 2: ingestion agent pipeline. Step 3: tagging agent swarm (3 agents + synthesis). Framework: direct fetch + Zod. Next: Step 4 (delta view). See docs/NEXT_STEPS.md for full architecture.*

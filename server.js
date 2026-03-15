@@ -25,6 +25,7 @@ const perspectives = require('./api/perspectives');
 const market = require('./api/market');
 const causalChain = require('./api/causal-chain');
 const reviewAssist = require('./api/review-assist');
+const suggestTags = require('./api/suggest-tags');
 const conflicts = require('./api/conflicts');
 
 const routes = {
@@ -47,6 +48,7 @@ const routes = {
   '/api/market': market,
   '/api/causal-chain': causalChain,
   '/api/review-assist': reviewAssist,
+  '/api/suggest-tags': suggestTags,
   '/api/conflicts': conflicts,
 };
 
@@ -62,6 +64,7 @@ const ADMIN_ROUTES = new Set([
   '/api/tweets-pending',
   '/api/tweet-disposition',
   '/api/review-assist',
+  '/api/suggest-tags',
 ]);
 
 const PORT = process.env.API_PORT || 3001;

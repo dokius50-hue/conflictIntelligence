@@ -107,26 +107,32 @@ orchestrator.js (npm run ingest:agent)
 
 **Cost per run (hormuz_2026, 2 theatres):** ~2 Perplexity (search) + 1 Claude (dedup) + N Perplexity (enrichment, ~3–8) = **6–11 API calls total**.
 
-#### Step 3: Tagging agents (on demand)
+#### ~~Step 3: Tagging agents (on demand)~~ (done)
 
-Replace `scripts/lib/suggest-tags.js` with a tagging swarm called when admin opens a queue item:
+Replaced `scripts/lib/suggest-tags.js` with a 3-agent tagging swarm called on demand from the Edit & Approve modal. "Suggest Tags (AI)" button triggers the swarm; suggestions auto-populate the tag selection fields.
 
-1. **Option-analyst** — Focused on option menu impacts. Uses `lib/reasoning/options.js` context.
-2. **Threshold-analyst** — Focused on threshold condition impacts. Uses `lib/reasoning/thresholds.js` context.
-3. **Cross-theatre** — Second-order effects across theatres. Highest-value addition.
-4. **Synthesis** — Merges outputs, validates IDs against config, returns `ai_suggested_tags`.
+**Agents (3 parallel Claude calls):**
 
-Trigger: API call when Edit & Approve modal opens (alongside existing review-assist).
+1. **Option-analyst** — Focuses on option menu impacts (executed, degraded, foreclosed, unlocked). Conservative: uncertain between degraded/foreclosed → degraded.
+2. **Threshold-analyst** — Focuses on threshold condition impacts. Only suggests conditions not already met.
+3. **Cross-theatre** — Second-order effects across theatres. Catches implications a single-theatre prompt misses. Skips for single-theatre conflicts.
+4. **Synthesis** — Deterministic (no LLM). Merges outputs, strips hallucinated IDs, removes contradictions, builds combined reasoning.
 
-Key files to create/modify:
+**Trigger:** "Suggest Tags (AI)" button in Edit & Approve modal. Not automatic — analyst clicks when they want AI input.
 
-- `agents/tagging/orchestrator.js` — Tagging swarm coordinator
-- `agents/tagging/option-analyst.js`
-- `agents/tagging/threshold-analyst.js`
-- `agents/tagging/cross-theatre.js`
-- `agents/tagging/synthesis.js`
-- `api/suggest-tags.js` — New API endpoint (or extend existing review-assist)
-- `src/admin/AdminQueue.jsx` — Wire tagging into Edit & Approve modal
+**Cost:** 3 Claude calls per invocation (parallel). No Perplexity calls for tagging.
+
+**Files created:**
+
+- `agents/tagging/option-analyst.js`, `threshold-analyst.js`, `cross-theatre.js`, `synthesis.js`
+- `agents/tagging/orchestrator.js` — Loads all context from `lib/db/`, runs 3 agents in parallel, synthesises
+- `api/suggest-tags.js` — `GET /api/suggest-tags?queue_id=&conflict_id=` (admin auth required)
+
+**Files modified:**
+
+- `server.js` — Added `/api/suggest-tags` route and admin auth
+- `netlify/functions/api.js` — Added `/api/suggest-tags` route
+- `src/admin/AdminQueue.jsx` — "Suggest Tags (AI)" button, loading state, auto-apply to tag selections, reasoning/flags display
 
 #### Step 4: Delta view (future)
 

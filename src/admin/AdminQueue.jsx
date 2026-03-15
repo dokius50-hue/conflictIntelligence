@@ -223,6 +223,9 @@ function EditApproveModal({ row, config, conflictId, onClose, onApprove, onRejec
   const [thresholdsAdvanced, setThresholdsAdvanced] = useState(row.thresholds_advanced ?? row.ai_suggested_tags?.thresholds_advanced ?? []);
   const [brief, setBrief] = useState(null);
   const [briefLoading, setBriefLoading] = useState(true);
+  const [aiTags, setAiTags] = useState(null);
+  const [aiTagsLoading, setAiTagsLoading] = useState(false);
+  const [aiTagsError, setAiTagsError] = useState(null);
 
   useEffect(() => {
     setBriefLoading(true);
@@ -233,6 +236,27 @@ function EditApproveModal({ row, config, conflictId, onClose, onApprove, onRejec
       .catch(() => setBrief(null))
       .finally(() => setBriefLoading(false));
   }, [row.id, conflictId]);
+
+  const requestAiTags = () => {
+    setAiTagsLoading(true);
+    setAiTagsError(null);
+    fetch(`${API}/suggest-tags?queue_id=${row.id}&conflict_id=${encodeURIComponent(conflictId)}`, { headers: { ...adminAuthHeaders() } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) {
+          setAiTagsError(data.error);
+        } else if (data.tags) {
+          setAiTags(data.tags);
+          if (data.tags.options_executed?.length) setOptionsExecuted((prev) => [...new Set([...prev, ...data.tags.options_executed])]);
+          if (data.tags.options_degraded?.length) setOptionsDegraded((prev) => [...new Set([...prev, ...data.tags.options_degraded])]);
+          if (data.tags.options_foreclosed?.length) setOptionsForeclosed((prev) => [...new Set([...prev, ...data.tags.options_foreclosed])]);
+          if (data.tags.options_unlocked?.length) setOptionsUnlocked((prev) => [...new Set([...prev, ...data.tags.options_unlocked])]);
+          if (data.tags.thresholds_advanced?.length) setThresholdsAdvanced((prev) => [...new Set([...prev, ...data.tags.thresholds_advanced])]);
+        }
+      })
+      .catch((e) => setAiTagsError(e.message))
+      .finally(() => setAiTagsLoading(false));
+  };
 
   const options = config?.options ?? [];
   const conditions = config?.threshold_conditions ?? [];
@@ -269,6 +293,29 @@ function EditApproveModal({ row, config, conflictId, onClose, onApprove, onRejec
             )}
           </div>
         )}
+        <div className="mt-2">
+          {!aiTags && !aiTagsLoading && (
+            <button
+              type="button"
+              onClick={requestAiTags}
+              className="rounded bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+            >
+              Suggest Tags (AI)
+            </button>
+          )}
+          {aiTagsLoading && <p className="text-xs text-amber-600">Running tag analysis (3 agents)…</p>}
+          {aiTagsError && <p className="text-xs text-red-500">Tag error: {aiTagsError}</p>}
+          {aiTags && (
+            <div className="rounded border border-amber-200 bg-amber-50/80 p-2 text-xs">
+              <p className="font-medium text-amber-800">AI Tag Suggestions (applied to selections below)</p>
+              {aiTags.reasoning && <p className="mt-1 italic text-slate-600">{aiTags.reasoning}</p>}
+              {aiTags.flags?.length > 0 && (
+                <p className="mt-1 text-amber-700"><strong>Cross-theatre:</strong> {aiTags.flags.join('; ')}</p>
+              )}
+              <p className="mt-1 text-slate-500">Confidence: {aiTags.confidence || 'medium'}</p>
+            </div>
+          )}
+        </div>
         <div className="mt-4 space-y-3">
           <label className="block">
             <span className="text-xs font-medium text-slate-500">Title</span>
