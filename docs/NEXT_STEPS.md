@@ -25,6 +25,7 @@ Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). For refe
 **Goal:** Help a seasoned analyst keep up with complex, fast-moving situations. Reduce cognitive overload. Pipeline: **reduce → structure → link → surface changes.**
 
 **Design decisions (March 2026):**
+
 - Agno SDK for agent definitions (or best-fit Node.js agent framework if Agno is Python-only); custom orchestrator pattern as fallback.
 - LLMs: Perplexity Sonar for search/extraction, Claude for reasoning/tagging.
 - Tagging: on demand (when admin opens queue item), not during ingestion.
@@ -59,6 +60,7 @@ Replace `ingest-perplexity.js` / `ingest-twitter.js` with an agent orchestrator:
 Run via `npm run ingest:agent` or GitHub Actions cron.
 
 Key files to create/modify:
+
 - `agents/ingestion/orchestrator.js` — Main pipeline script
 - `agents/ingestion/theatre-searcher.js` — Per-theatre extraction agent
 - `agents/ingestion/deduplicator.js` — Near-duplicate detection
@@ -81,6 +83,7 @@ Replace `scripts/lib/suggest-tags.js` with a tagging swarm called when admin ope
 Trigger: API call when Edit & Approve modal opens (alongside existing review-assist).
 
 Key files to create/modify:
+
 - `agents/tagging/orchestrator.js` — Tagging swarm coordinator
 - `agents/tagging/option-analyst.js`
 - `agents/tagging/threshold-analyst.js`
