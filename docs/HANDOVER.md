@@ -68,11 +68,18 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 
 ## Next steps (priority order)
 
-See **`docs/NEXT_STEPS.md`** for the full list. Summary:
+See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 
-1. ~~**Config Editor expansion**~~ — Done. Options and Thresholds tabs in Admin → Config.
-2. ~~**Connect to Netlify**~~ — Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). Env checklist: `docs/NETLIFY_ENV.md`.
-3. ~~**Multi-conflict resilience fix**~~ — Done. Layout route + defensive conflictId.
+1. ~~**Config Editor expansion**~~ — Done.
+2. ~~**Connect to Netlify**~~ — Done.
+3. ~~**Multi-conflict resilience fix**~~ — Done.
+4. **Phase 3 agents** — Current priority. Pipeline: reduce → structure → link → surface changes.
+   - **Step 1:** Schema migration (`005_agent_schema.sql`) — `key_findings`, `confidence_reasoning`, `corroboration_status` on queue tables.
+   - **Step 2:** Ingestion agents — Theatre-searcher (parallel), deduplicator, enricher. Orchestrator in `agents/ingestion/`.
+   - **Step 3:** Tagging agents (on demand) — Option-analyst, threshold-analyst, cross-theatre, synthesis. Orchestrator in `agents/tagging/`.
+   - **Step 4:** Delta view — "What changed since last review?"
+   - **Step 5:** Gap detection — "What's absent?"
+   - **Design:** Agno SDK (or best-fit Node.js framework). Perplexity for extraction, Claude for reasoning. Agents are narrow functions. Deterministic validators on all outputs. Conservative defaults. Human approves everything. `agent_trace` on every queue row.
 
 ---
 
@@ -96,7 +103,13 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 | Conflicts API | `api/conflicts.js` |
 | Resilience fix plan | `docs/plans/fix_multi_conflict_resilience.md` |
 | Netlify | `netlify.toml`, `netlify/functions/api.js` |
-| Next steps | `docs/NEXT_STEPS.md` |
+| Review-assist agents | `agents/review-assist/` (orchestrator, context-builder, verifier, pattern-detector) |
+| Ingestion agent specs | `agents/ingestion/README.md` |
+| Tagging agent specs | `agents/tagging/README.md` |
+| Existing suggest-tags | `scripts/lib/suggest-tags.js` (Claude, ID validation — not yet wired into ingestors) |
+| Tagging context builder | `scripts/lib/build-tagging-context.js` |
+| Tagging prompt | `scripts/lib/tagging-prompts/v1.js` |
+| Next steps (Phase 3 plan) | `docs/NEXT_STEPS.md` |
 | Architecture | `CONFLICT_INTELLIGENCE_README.md` |
 
 ---
@@ -121,7 +134,10 @@ See **`docs/NEXT_STEPS.md`** for the full list. Summary:
 - **Supabase MCP for seeding:** Use `execute_sql` via MCP for bulk inserts and schema checks. Always verify column names before inserting — several tables lack columns you'd expect (`is_active` on theatres, `conflict_id` on threshold/scenario conditions).
 - **Netlify:** Single Express app in `netlify/functions/api.js` wraps all 16 `api/*.js` handlers via `serverless-http`. No changes to handler files needed — they already use Express-style req/res. Admin auth must be enforced inside each admin handler (no central middleware on Netlify). `netlify.toml` defines build, publish dir, function dir, and redirects (API → function, SPA fallback).
 - **Config status propagation:** When approving an event, `queue-approve.js` now updates `config_options.status` and `config_threshold_conditions.status`. If all conditions for a threshold become satisfied, `config_thresholds.status = 'crossed'`. On any post-insert failure, the published event is deleted so the queue item stays pending.
+- **Phase 3 agent design (March 2026):** Pipeline is "reduce → structure → link → surface changes." Agents are narrow functions (one question each), not services. Every agent output passes through a deterministic validator. Conservative defaults: uncertain → do less. Content classified per item, not per source (same account can post breaking news and analysis). `key_findings` with attribution replaces flat descriptions. `corroboration_status` set by enricher, not extraction. Dedup is conservative: prefer duplicates over incorrect merges. Tagging is on-demand (when admin opens queue item), not during ingestion. Perplexity Sonar for search/extraction, Claude for reasoning/tagging. `agent_trace` JSONB on every queue row for observability.
+- **`suggest-tags.js` exists but is not wired:** `scripts/lib/suggest-tags.js` calls Claude and validates IDs, but neither ingestor calls it. `ai_suggested_tags` is usually empty in the queue. Phase 3 tagging agents will replace this with a multi-agent swarm (option-analyst, threshold-analyst, cross-theatre, synthesis).
+- **Queue tables have agent fields:** `processing_mode` (default `'script'`), `agent_run_id`, `agent_trace` (JSONB) already exist on `events_queue` and `tweets_queue`. Phase 3 adds: `key_findings`, `confidence_reasoning`, `corroboration_status` via migration `005_agent_schema.sql`.
 
 ---
 
-*Last updated: March 2026 — multi-conflict UI (Option A), resilience fix complete. See docs/NEXT_STEPS.md for remaining work.*
+*Last updated: March 2026 — Phase 3 agent pipeline designed. Implementation starts with schema migration, then ingestion agents, then tagging agents. See docs/NEXT_STEPS.md for full plan.*
