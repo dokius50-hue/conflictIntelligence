@@ -27,6 +27,8 @@ const causalChain = require('./api/causal-chain');
 const reviewAssist = require('./api/review-assist');
 const suggestTags = require('./api/suggest-tags');
 const conflicts = require('./api/conflicts');
+const delta = require('./api/delta');
+const deltaMarkReviewed = require('./api/delta-mark-reviewed');
 
 const routes = {
   '/api/queue-pending': queuePending,
@@ -50,6 +52,8 @@ const routes = {
   '/api/review-assist': reviewAssist,
   '/api/suggest-tags': suggestTags,
   '/api/conflicts': conflicts,
+  '/api/delta': delta,
+  '/api/delta-mark-reviewed': deltaMarkReviewed,
 };
 
 const ADMIN_ROUTES = new Set([
@@ -65,6 +69,7 @@ const ADMIN_ROUTES = new Set([
   '/api/tweet-disposition',
   '/api/review-assist',
   '/api/suggest-tags',
+  '/api/delta-mark-reviewed',
 ]);
 
 const PORT = process.env.API_PORT || 3001;

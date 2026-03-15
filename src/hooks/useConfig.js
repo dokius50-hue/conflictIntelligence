@@ -3,7 +3,7 @@ import { useConflict } from '../contexts/ConflictContext';
 
 export function useConfig() {
   const { conflictId } = useConflict();
-  const [data, setData] = useState({ actors: [], theatres: [], options: [], thresholds: [], scenarios: [] });
+  const [data, setData] = useState({ actors: [], theatres: [], options: [], thresholds: [], threshold_conditions: [], scenarios: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   useEffect(() => {
@@ -11,7 +11,7 @@ export function useConfig() {
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setError(d.error);
-        else setData({ actors: d.actors || [], theatres: d.theatres || [], options: d.options || [], thresholds: d.thresholds || [], scenarios: d.scenarios || [] });
+        else setData({ actors: d.actors || [], theatres: d.theatres || [], options: d.options || [], thresholds: d.thresholds || [], threshold_conditions: d.threshold_conditions || [], scenarios: d.scenarios || [] });
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));

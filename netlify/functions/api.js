@@ -33,6 +33,8 @@ const routes = {
   '/api/review-assist':     require('../../api/review-assist'),
   '/api/suggest-tags':      require('../../api/suggest-tags'),
   '/api/conflicts':         require('../../api/conflicts'),
+  '/api/delta':             require('../../api/delta'),
+  '/api/delta-mark-reviewed': require('../../api/delta-mark-reviewed'),
 };
 
 for (const [path, handler] of Object.entries(routes)) {
