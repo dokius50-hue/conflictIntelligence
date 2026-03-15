@@ -47,6 +47,7 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
 
 ### Recently completed (March 2026)
 
+- **Phase 3 Step 1: Schema migration (`005_agent_schema.sql`)** — Added `key_findings` (JSONB), `confidence_reasoning` (TEXT), `corroboration_status` (TEXT + CHECK constraint) to `events_queue` and `tweets_queue`. Existing rows backfilled with safe defaults. All existing scripts, API endpoints, and admin UI verified compatible. Applied via Supabase MCP `apply_migration`.
 - **Ingestion fixes** — Perplexity endpoint corrected to `https://api.perplexity.ai/chat/completions`; Twitter `sinceId` forwarded as `since_id` to RapidAPI; debug `console.log` removed.
 - **Option/threshold status auto-updates** — Approving an event in the queue now updates `config_options.status` and `config_threshold_conditions.status`; if all conditions for a threshold are satisfied, `config_thresholds.status` is set to `crossed`. Rollback on failure (deletes the published event).
 - **Causal chain view** — Click an event on the Timeline page → panel shows option changes, threshold progress, scenarios at risk. API: `GET /api/causal-chain?event_id=`. New: `CausalChainPanel`, `TimelinePage`, `useCausalChain` hook.
@@ -74,12 +75,12 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 2. ~~**Connect to Netlify**~~ — Done.
 3. ~~**Multi-conflict resilience fix**~~ — Done.
 4. **Phase 3 agents** — Current priority. Pipeline: reduce → structure → link → surface changes.
-   - **Step 1:** Schema migration (`005_agent_schema.sql`) — `key_findings`, `confidence_reasoning`, `corroboration_status` on queue tables.
-   - **Step 2:** Ingestion agents — Theatre-searcher (parallel), deduplicator, enricher. Orchestrator in `agents/ingestion/`.
-   - **Step 3:** Tagging agents (on demand) — Option-analyst, threshold-analyst, cross-theatre, synthesis. Orchestrator in `agents/tagging/`.
+   - ~~**Step 1:** Schema migration (`005_agent_schema.sql`)~~ — Done. `key_findings`, `confidence_reasoning`, `corroboration_status` added to `events_queue` and `tweets_queue`. CHECK constraint on `corroboration_status`. Applied via Supabase MCP, local file at `supabase/migrations/005_agent_schema.sql`.
+   - **Step 2:** Ingestion agents — Theatre-searcher (parallel), deduplicator, enricher. Orchestrator in `agents/ingestion/`. Framework: Vercel AI SDK for LLM calls, custom orchestrator (review-assist pattern). Dedup: Claude-judged similarity (not embeddings).
+   - **Step 3:** Tagging agents (on demand) — Option-analyst, threshold-analyst, cross-theatre, synthesis. Orchestrator in `agents/tagging/`. Trigger: explicit "Suggest Tags" button in Edit & Approve modal.
    - **Step 4:** Delta view — "What changed since last review?"
    - **Step 5:** Gap detection — "What's absent?"
-   - **Design:** Agno SDK (or best-fit Node.js framework). Perplexity for extraction, Claude for reasoning. Agents are narrow functions. Deterministic validators on all outputs. Conservative defaults. Human approves everything. `agent_trace` on every queue row.
+   - **Design:** Vercel AI SDK for LLM calls (Perplexity + Claude). Custom orchestrator pattern (agents are functions). Deterministic validators on all outputs. Conservative defaults. Human approves everything. `agent_trace` on every queue row.
 
 ---
 
@@ -87,7 +88,7 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 
 | Purpose | File |
 |---|---|
-| Schema source of truth | `supabase/migrations/001_initial.sql`, `002_seed_hormuz.sql` |
+| Schema source of truth | `supabase/migrations/001_initial.sql`, `002_seed_hormuz.sql`, `005_agent_schema.sql` |
 | API server (dev) | `server.js` |
 | Admin auth | `api/lib/adminAuth.js` |
 | Ingestion | `scripts/ingest-perplexity.js`, `scripts/ingest-twitter.js` |
@@ -140,4 +141,4 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 
 ---
 
-*Last updated: March 2026 — Phase 3 agent pipeline designed. Implementation starts with schema migration, then ingestion agents, then tagging agents. See docs/NEXT_STEPS.md for full plan.*
+*Last updated: March 2026 — Phase 3 Step 1 (schema migration) complete. Step 2 (ingestion agents) is next. Framework: Vercel AI SDK + custom orchestrator. See docs/NEXT_STEPS.md for full plan.*

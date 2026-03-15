@@ -38,15 +38,15 @@ Live at [conflictintel.netlify.app](https://conflictintel.netlify.app). For refe
 
 ### Implementation order
 
-#### Step 1: Schema migration (`005_agent_schema.sql`)
+#### ~~Step 1: Schema migration (`005_agent_schema.sql`)~~ (done)
 
-Add new columns to `events_queue` and `tweets_queue`:
+Applied via Supabase MCP `apply_migration`. Added to `events_queue` and `tweets_queue`:
 
-- `key_findings` — JSONB array of `{ finding, attribution, type }` bullets
-- `confidence_reasoning` — TEXT explaining why confidence is high/medium/low
-- `corroboration_status` — TEXT enum: `single_source | multi_corroborating | multi_divergent | unknown`
+- `key_findings` — JSONB default `'[]'`, array of `{ finding, attribution, type }` bullets
+- `confidence_reasoning` — TEXT nullable, explains why confidence is high/medium/low
+- `corroboration_status` — TEXT default `'unknown'`, CHECK constraint: `single_source | multi_corroborating | multi_divergent | unknown`
 
-These enable richer extraction and enrichment without changing existing columns.
+Verified: existing rows backfilled, ingestion scripts compatible, admin UI graceful, CHECK constraints enforced. Local file: `supabase/migrations/005_agent_schema.sql`.
 
 #### Step 2: Ingestion agents
 
