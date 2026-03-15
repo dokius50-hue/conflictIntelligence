@@ -28,6 +28,10 @@ Use this doc to pick up work after a break or in a new session. It summarizes wh
   - **Step 1: Schema migration** — `key_findings`, `confidence_reasoning`, `corroboration_status` on queue tables.
   - **Step 2: Ingestion agents** — Config-driven theatre-searcher → deduplicator → enricher → insert. Run: `npm run ingest:agent`.
   - **Step 3: Tagging agents** — 3-agent swarm (option-analyst, threshold-analyst, cross-theatre) + deterministic synthesis. Triggered on demand via "Suggest Tags (AI)" button in Edit & Approve modal. API: `GET /api/suggest-tags`.
+- **Phase 3 — Additional (March 2026):**
+  - **Agent trace UI** — `AgentFindings` component in Edit & Approve modal surfaces `key_findings` (structured bullets), `confidence_reasoning`, `corroboration_status`, and expandable raw `agent_trace` JSON. Invisible for non-agent rows.
+  - **RLS fix** — `insertQueueEvent` (`lib/db/queue.js`) now uses service role key. Previously used anon key and silently failed — agent pipeline runs before this fix inserted 0 rows.
+  - **GitHub Actions** — "Ingest Agent Pipeline" step added to `.github/workflows/ingest.yml`. Runs `ingest:agent` for both conflicts daily alongside existing Perplexity/Twitter steps. Requires `ANTHROPIC_API_KEY` repo secret.
 
 ### Supabase data state
 
@@ -79,8 +83,8 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
    - ~~**Step 3:** Tagging agents~~ — Done.
    - **Step 4:** Delta view — **NEXT TO IMPLEMENT.** "What changed since last review?" See `docs/NEXT_STEPS.md`.
    - **Step 5:** Gap detection — "What's absent?"
-5. **Agent trace in admin UI** — The `agent_trace` JSONB is being populated on every queue row but not yet surfaced in the UI. An expandable "Show agent trace" in the AdminQueue Edit modal would let analysts understand pipeline decisions. Relatively simple.
-6. **Add `npm run ingest:agent` to GitHub Actions** — The workflow (`.github/workflows/ingest.yml`) currently runs `ingest:perplexity` and `ingest:twitter`. Agent ingestion is ready; add it alongside or replace the old script. Needs `ANTHROPIC_API_KEY` repo secret.
+5. ~~**Agent trace in admin UI**~~ — Done. `AgentFindings` component in Edit & Approve modal.
+6. ~~**Add `npm run ingest:agent` to GitHub Actions**~~ — Done. Step added to `.github/workflows/ingest.yml`. Add `ANTHROPIC_API_KEY` repo secret to activate.
 
 ---
 
@@ -144,4 +148,4 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 
 ---
 
-*Last updated: March 15, 2026 — Phase 3 Steps 1–3 complete. Step 1: schema migration. Step 2: ingestion agent pipeline (theatre-searcher, deduplicator, enricher). Step 3: tagging agent swarm (option-analyst, threshold-analyst, cross-theatre, synthesis). Framework: direct fetch + Zod, CJS. All 11 pages verified clean (0 console errors). Next: Step 4 (delta view) or agent trace UI. See docs/NEXT_STEPS.md.*
+*Last updated: March 15, 2026 — Agent trace UI added (AgentFindings component in Edit & Approve modal). RLS bug fixed in insertQueueEvent (was silently inserting 0 rows). First successful full pipeline run: 6 events + 41 tweets. GitHub Actions updated with Ingest Agent Pipeline step. Next: Step 4 (delta view). Requires ANTHROPIC_API_KEY repo secret to activate scheduled agent ingestion. See docs/NEXT_STEPS.md.*

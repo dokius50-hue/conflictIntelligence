@@ -38,3 +38,14 @@ jobs:
           RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
         run: npm run ingest:twitter
         continue-on-error: true
+
+      - name: Ingest Agent Pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          npm run ingest:agent -- --conflict-id=hormuz_2026
+          npm run ingest:agent -- --conflict-id=pak_afg_2025
+        continue-on-error: true

@@ -124,13 +124,15 @@ Replaced `scripts/lib/suggest-tags.js` with a 3-agent tagging swarm called on de
 
 "What's absent?" Surface expected-but-missing signals (theatre went quiet, no response to provocation). Requires baseline cadence data built over time.
 
-### Agent trace in admin UI
+### ~~Agent trace in admin UI~~ (done)
 
-The `agent_trace` JSONB is populated on every queue row from the agent pipeline but not yet visible in the admin UI. Adding an expandable "Show agent trace" section in the Edit & Approve modal would let analysts see why the pipeline made its decisions. Relatively simple — just render the JSON in a collapsible section similar to the existing "Show raw input" toggle.
+`AgentFindings` component added to Edit & Approve modal. Shows `key_findings` as structured bullets (type badge + attribution), `confidence_reasoning` and `corroboration_status` as inline badges, and an expandable raw `agent_trace` JSON toggle. Invisible for items ingested by the old pipeline (graceful null-check).
 
-### Add agent ingestion to GitHub Actions
+**RLS fix (done):** `insertQueueEvent` in `lib/db/queue.js` now uses `getSupabase({ serviceRole: true })`. Previously used anon key and silently failed to insert — all agent pipeline runs before this fix inserted 0 rows.
 
-The workflow (`.github/workflows/ingest.yml`) currently runs `npm run ingest:perplexity` and `npm run ingest:twitter` daily at 12:00 UTC. Agent ingestion is ready to add — either alongside or replacing the old script. Needs `ANTHROPIC_API_KEY` added as repo secret. Update workflow to include `npm run ingest:agent -- --conflict-id=hormuz_2026`.
+### ~~Add agent ingestion to GitHub Actions~~ (done)
+
+"Ingest Agent Pipeline" step added to `.github/workflows/ingest.yml`. Runs `ingest:agent` for both `hormuz_2026` and `pak_afg_2025` after the existing Perplexity and Twitter steps. Both old and new steps run in parallel (keeping old as fallback to compare output quality). Needs `ANTHROPIC_API_KEY` repo secret added in GitHub → Settings → Secrets and variables → Actions.
 
 ---
 
