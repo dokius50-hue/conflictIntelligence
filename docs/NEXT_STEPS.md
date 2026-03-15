@@ -49,56 +49,63 @@ Applied via Supabase MCP `apply_migration`. Added to `events_queue` and `tweets_
 
 Verified: existing rows backfilled, ingestion scripts compatible, admin UI graceful, CHECK constraints enforced. Local file: `supabase/migrations/005_agent_schema.sql`.
 
-#### Step 2: Ingestion agents — NEXT TO IMPLEMENT
+#### ~~Step 2: Ingestion agents~~ (done)
 
-Replace `ingest-perplexity.js` with an agent orchestrator. Existing scripts stay as fallback.
+Replaced `ingest-perplexity.js` with an agent orchestrator. Old scripts stay as fallback. Run: `npm run ingest:agent` (or `node agents/ingestion/orchestrator.js --dry-run --conflict-id=hormuz_2026`).
 
-**Pipeline flow:**
+**Pipeline (implemented):**
 
 ```
 orchestrator.js (npm run ingest:agent)
   ├─ 1. Load config (theatres, actors, locations for CONFLICT_ID)
   ├─ 2. Generate agent_run_id (crypto.randomUUID())
   ├─ 3. THEATRE-SEARCHER (parallel, 1 per theatre)
-  │   ├─ Build config-driven prompt (theatre label, location names, valid actor IDs)
+  │   ├─ Config-driven prompt (theatre label, location names, valid actor IDs)
   │   ├─ Call Perplexity Sonar → raw JSON events
-  │   ├─ Parse (reuse scripts/lib/sanitize.js), validate (reuse scripts/lib/validate.js + Zod)
+  │   ├─ Parse (reuse scripts/lib/sanitize.js), validate (scripts/lib/validate.js + Zod)
   │   ├─ Extract key_findings + confidence_reasoning per event
   │   └─ Return candidates[] with agent_trace.search
   ├─ 4. DEDUPLICATOR (1 batched Claude call)
-  │   ├─ Load recent queue events (last 48h) via getRecentQueueEvents()
-  │   ├─ ONE Claude call: all candidates + recent queue → which are duplicates?
+  │   ├─ Load recent queue + published events (configurable window, default 48h)
+  │   ├─ ONE Claude call: all candidates + recent events → which are duplicates?
   │   ├─ Conservative: uncertain = keep as new
   │   └─ Write agent_trace.dedup per candidate
-  ├─ 5. ENRICHER (parallel, 1 Perplexity call per non-duplicate candidate)
+  ├─ 5. ENRICHER (parallel, capped concurrency of 3)
   │   ├─ Search for corroborating URLs from different publications
   │   ├─ Set corroboration_status (single_source | multi_corroborating | multi_divergent)
   │   └─ Write agent_trace.enricher
   └─ 6. INSERT into events_queue
       ├─ processing_mode='agent', agent_run_id, full agent_trace
       ├─ key_findings, confidence_reasoning, corroboration_status
+      ├─ auto_approve_eligible preserved from config_sources
       └─ Reuse existing sanitize/validate helpers
 ```
 
-**Files to create:**
+**Files created:**
 
-- `agents/lib/llm.js` — Shared LLM caller. `callPerplexity(prompt)` and `callClaude(prompt)` via direct `fetch` (same pattern as existing `ingest-perplexity.js` and `suggest-tags.js`). `callClaudeJSON(prompt, zodSchema)` parses + validates response. Graceful degradation when API keys missing.
-- `agents/ingestion/validators.js` — Zod schemas: `candidateEventSchema` (theatre-searcher output including key_findings), `dedupResultSchema` (dedup verdicts), `enrichmentResultSchema` (corroboration result). `validateCandidates(raw)` returns `{ valid[], rejected[] }`.
-- `agents/ingestion/theatre-searcher.js` — `searchTheatre(theatre, actors, locations, conflictId)`. Prompt built dynamically from config (not hardcoded per conflict). Calls Perplexity, parses with `parseRawEventArray`, sanitizes with `sanitizeEventRecord`, validates with Zod. Returns `{ candidates, trace }`.
-- `agents/ingestion/deduplicator.js` — `deduplicateCandidates(candidates, recentQueueEvents)`. ONE Claude call with all candidates + recent items. Returns verdict per candidate: `"new"` or `"duplicate"` with `duplicate_of_queue_id`. Conservative default: validation failure = treat all as new.
-- `agents/ingestion/enricher.js` — `enrichCandidate(candidate)`. One Perplexity call per candidate searching for corroboration. Sets `corroboration_status`. Run via `Promise.allSettled` for parallelism. Failure = `corroboration_status: 'unknown'`.
-- `agents/ingestion/orchestrator.js` — Entry point. Loads config, runs pipeline stages, inserts results. Supports `--dry-run` flag (log but don't insert) and `--conflict-id=X` override. Saves trace to `logs/raw/`.
+- `agents/lib/llm.js` — Shared LLM caller. `callPerplexity(prompt)` and `callClaude(prompt)` via direct `fetch`. `callClaudeJSON(prompt, zodSchema)` parses + validates. Single retry on 429/5xx with failure counter tracking. `withConcurrency(items, fn, limit)` for bounded parallelism.
+- `agents/ingestion/validators.js` — Zod schemas: `candidateEventSchema`, `dedupResultSchema`, `enrichmentResultSchema`. `validateCandidates(raw)` returns `{ valid[], rejected[] }`.
+- `agents/ingestion/theatre-searcher.js` — `searchTheatre(theatre, actors, locations, conflictId)`. Config-driven prompts. Reuses `parseRawEventArray`, `sanitizeEventRecord`. Two-stage validation (legacy + Zod). Returns `{ candidates, rejected, trace }`.
+- `agents/ingestion/deduplicator.js` — `deduplicateCandidates(candidates, recentQueue, recentPublished)`. ONE batched Claude call. Checks both queue and published events (published = higher trust). Conservative: validation failure = treat all as new.
+- `agents/ingestion/enricher.js` — `enrichCandidates(candidates)`. Bounded concurrency (3). One Perplexity call per non-duplicate candidate. Failure per candidate → `corroboration_status: 'unknown'`.
+- `agents/ingestion/orchestrator.js` — Entry point. `--dry-run`, `--conflict-id=X`, `--dedup-hours=N`. Logs trace to `logs/raw/`. Reports API failure counters.
 
-**Files to modify:**
+**Files modified:**
 
-- `lib/db/queue.js` — Add `getRecentQueueEvents(conflictId, hours)` for dedup lookups (returns last 48h of queue events, all statuses, select only columns needed for dedup).
-- `package.json` — Add `zod` dependency, add `"ingest:agent": "node agents/ingestion/orchestrator.js"` script.
+- `lib/db/queue.js` — Added `getRecentQueueEvents(conflictId, hours, limit)` and `insertQueueEvent(row)` to centralise DB access.
+- `package.json` — Added `zod` dependency, `"ingest:agent"` script.
 
-**Error handling:** Each stage catches independently. Theatre-searcher failure for one theatre → continue with others. Dedup failure → skip dedup, insert all as new. Enricher failure per candidate → `corroboration_status: 'unknown'`. All errors in `agent_trace`.
+**Design decisions:**
+
+- Enricher concurrency capped at 3 to avoid Perplexity rate limits with large batches.
+- Dedup compares against both queue and published events (published items = confirmed, higher-trust comparisons).
+- Dedup window configurable via `--dedup-hours` flag (default 48h; increase for slow-moving conflicts).
+- Single retry with backoff on transient API errors (429/5xx). Consecutive failure counter logged so operators know when an API is down.
+- `insertQueueEvent` centralised in `lib/db/queue.js` — future column changes only need one update.
+- `auto_approve_eligible` preserved using existing `getAutoApproveEligible` from `scripts/lib/validate.js`.
+- Old `ingest-perplexity.js` preserved as fallback. Note: its prompts are hardcoded per conflict_id; the agent pipeline's config-driven prompts supersede this.
 
 **Cost per run (hormuz_2026, 2 theatres):** ~2 Perplexity (search) + 1 Claude (dedup) + N Perplexity (enrichment, ~3–8) = **6–11 API calls total**.
-
-**Key improvement over old scripts:** Prompts are config-driven (not hardcoded per conflict). Adding a new conflict with theatres/actors/locations automatically works.
 
 #### Step 3: Tagging agents (on demand)
 
