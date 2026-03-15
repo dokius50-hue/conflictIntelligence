@@ -76,11 +76,11 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 3. ~~**Multi-conflict resilience fix**~~ — Done.
 4. **Phase 3 agents** — Current priority. Pipeline: reduce → structure → link → surface changes.
    - ~~**Step 1:** Schema migration (`005_agent_schema.sql`)~~ — Done. `key_findings`, `confidence_reasoning`, `corroboration_status` added to `events_queue` and `tweets_queue`. CHECK constraint on `corroboration_status`. Applied via Supabase MCP, local file at `supabase/migrations/005_agent_schema.sql`.
-   - **Step 2:** Ingestion agents — Theatre-searcher (parallel), deduplicator, enricher. Orchestrator in `agents/ingestion/`. Framework: Vercel AI SDK for LLM calls, custom orchestrator (review-assist pattern). Dedup: Claude-judged similarity (not embeddings).
+   - **Step 2:** Ingestion agents — **NEXT TO IMPLEMENT.** See `docs/NEXT_STEPS.md` for full architecture. Summary: theatre-searcher (Perplexity, parallel per theatre), deduplicator (1 batched Claude call), enricher (Perplexity corroboration per candidate), orchestrator entry point (`npm run ingest:agent`). Framework: direct API calls + Zod validation (NOT Vercel AI SDK — ESM-only, incompatible with CJS project). Custom orchestrator follows `agents/review-assist/` pattern.
    - **Step 3:** Tagging agents (on demand) — Option-analyst, threshold-analyst, cross-theatre, synthesis. Orchestrator in `agents/tagging/`. Trigger: explicit "Suggest Tags" button in Edit & Approve modal.
    - **Step 4:** Delta view — "What changed since last review?"
    - **Step 5:** Gap detection — "What's absent?"
-   - **Design:** Vercel AI SDK for LLM calls (Perplexity + Claude). Custom orchestrator pattern (agents are functions). Deterministic validators on all outputs. Conservative defaults. Human approves everything. `agent_trace` on every queue row.
+   - **Design:** Direct `fetch` calls to Perplexity + Claude APIs. Custom orchestrator pattern (agents are functions). Zod schemas for deterministic validation. Conservative defaults. Human approves everything. `agent_trace` on every queue row.
 
 ---
 
@@ -106,6 +106,8 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 | Netlify | `netlify.toml`, `netlify/functions/api.js` |
 | Review-assist agents | `agents/review-assist/` (orchestrator, context-builder, verifier, pattern-detector) |
 | Ingestion agent specs | `agents/ingestion/README.md` |
+| Ingestion agent pipeline (Step 2) | `agents/ingestion/orchestrator.js`, `theatre-searcher.js`, `deduplicator.js`, `enricher.js`, `validators.js` |
+| Shared LLM caller (Step 2) | `agents/lib/llm.js` |
 | Tagging agent specs | `agents/tagging/README.md` |
 | Existing suggest-tags | `scripts/lib/suggest-tags.js` (Claude, ID validation — not yet wired into ingestors) |
 | Tagging context builder | `scripts/lib/build-tagging-context.js` |
@@ -138,7 +140,11 @@ See **`docs/NEXT_STEPS.md`** for the full plan. Summary:
 - **Phase 3 agent design (March 2026):** Pipeline is "reduce → structure → link → surface changes." Agents are narrow functions (one question each), not services. Every agent output passes through a deterministic validator. Conservative defaults: uncertain → do less. Content classified per item, not per source (same account can post breaking news and analysis). `key_findings` with attribution replaces flat descriptions. `corroboration_status` set by enricher, not extraction. Dedup is conservative: prefer duplicates over incorrect merges. Tagging is on-demand (when admin opens queue item), not during ingestion. Perplexity Sonar for search/extraction, Claude for reasoning/tagging. `agent_trace` JSONB on every queue row for observability.
 - **`suggest-tags.js` exists but is not wired:** `scripts/lib/suggest-tags.js` calls Claude and validates IDs, but neither ingestor calls it. `ai_suggested_tags` is usually empty in the queue. Phase 3 tagging agents will replace this with a multi-agent swarm (option-analyst, threshold-analyst, cross-theatre, synthesis).
 - **Queue tables have agent fields:** `processing_mode` (default `'script'`), `agent_run_id`, `agent_trace` (JSONB) already exist on `events_queue` and `tweets_queue`. Phase 3 adds: `key_findings`, `confidence_reasoning`, `corroboration_status` via migration `005_agent_schema.sql`.
+- **Vercel AI SDK is ESM-only:** The `ai` npm package uses `import` syntax and cannot be `require()`'d in a CommonJS project (`"type": "commonjs"` in package.json). Workarounds (.mjs files, dynamic import()) add friction. Decision: use direct `fetch` calls to Perplexity/Claude APIs (matching existing `ingest-perplexity.js` and `suggest-tags.js` patterns) + Zod for schema validation. This gives structured output validation without CJS/ESM friction.
+- **Dedup strategy:** Claude judges similarity in ONE batched call (all candidates + recent queue items). Conservative: uncertain = keep both. Prefer duplicates over missed events. Agent_trace records reasoning.
+- **Enricher strategy:** One Perplexity Sonar call per candidate to find corroborating URLs from different publications. Sets `corroboration_status` to `single_source` / `multi_corroborating` / `multi_divergent`. Failure = `unknown`.
+- **Theatre-searcher prompts are config-driven:** Unlike hardcoded prompts in `ingest-perplexity.js`, agent prompts are built dynamically from `config_theatres`, `config_actors`, `config_locations`. Adding a new conflict or theatre automatically generates correct prompts.
 
 ---
 
-*Last updated: March 2026 — Phase 3 Step 1 (schema migration) complete. Step 2 (ingestion agents) is next. Framework: Vercel AI SDK + custom orchestrator. See docs/NEXT_STEPS.md for full plan.*
+*Last updated: March 2026 — Phase 3 Step 1 (schema migration) complete. Step 2 (ingestion agents) planned and ready to implement. Framework: direct fetch + Zod (not Vercel AI SDK). See docs/NEXT_STEPS.md for full architecture.*
